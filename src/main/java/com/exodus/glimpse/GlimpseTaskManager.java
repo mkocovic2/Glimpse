@@ -20,9 +20,10 @@ import javafx.scene.image.ImageView;
 import java.net.URL;
 
 public class GlimpseTaskManager extends Application {
-    private StringProperty selectedResource = new SimpleStringProperty("CPU");
+    private StringProperty selectedResource = new SimpleStringProperty("Hardware");
     private double xOffset = 0;
     private double yOffset = 0;
+    private VBox rightSection;
 
     @Override
     public void start(Stage primaryStage) {
@@ -36,75 +37,56 @@ public class GlimpseTaskManager extends Application {
 
         SplitPane mainSplitPane = new SplitPane();
         mainSplitPane.setDividerPositions(0.22, 0.55);
-
         mainSplitPane.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
-
-        mainSplitPane.lookupAll(".split-pane-divider").forEach(div -> {
-            div.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-opacity: 0;");
-        });
 
         VBox leftSidebar = createLeftSidebar();
 
         SplitPane contentSplitPane = new SplitPane();
-
         contentSplitPane.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
-        contentSplitPane.lookupAll(".split-pane-divider").forEach(div -> {
-            div.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-opacity: 0;");
-        });
 
         VBox centerSection = createCenterSection();
-        VBox rightSection = createRightSection();
+        rightSection = createRightSection();
 
         contentSplitPane.getItems().addAll(centerSection, rightSection);
-
         mainSplitPane.getItems().addAll(leftSidebar, contentSplitPane);
-
         root.setCenter(mainSplitPane);
-
-        // Add drop shadow to the entire window
         root.setEffect(new DropShadow(10, Color.rgb(0, 0, 0, 0.5)));
 
-        // Set up the scene with transparent background to allow rounded corners
         Scene scene = new Scene(root, 850, 500);
         scene.setFill(Color.TRANSPARENT);
 
-        // Add stylesheet to handle dividers after scene is shown
-        scene.getStylesheets().add(getClass().getResource("/styles.css").toExternalForm());
+        // Load CSS styles
+        try {
+            URL cssUrl = getClass().getResource("/styles.css");
+            if (cssUrl != null) {
+                scene.getStylesheets().add(cssUrl.toExternalForm());
+            } else {
+                System.err.println("CSS file not found. Using default styling.");
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading CSS: " + e.getMessage());
+        }
 
         primaryStage.setTitle("Glimpse");
         URL imageUrl = getClass().getResource("/GlimpseLogo1.png");
-        if (imageUrl == null) {
-            System.err.println("Image not found at /GlimpseLogo1.png");
-        } else {
+        if (imageUrl != null) {
             Image image = new Image(imageUrl.toExternalForm());
             primaryStage.getIcons().add(image);
         }
         primaryStage.setScene(scene);
         primaryStage.initStyle(StageStyle.TRANSPARENT);
         primaryStage.show();
-
-        // Apply CSS to dividers after scene is shown
-        mainSplitPane.lookupAll(".split-pane-divider").forEach(div -> {
-            div.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-opacity: 0;");
-        });
-        contentSplitPane.lookupAll(".split-pane-divider").forEach(div -> {
-            div.setStyle("-fx-background-color: transparent; -fx-padding: 0; -fx-opacity: 0;");
-        });
     }
-
     private HBox createTitleBar(Stage stage) {
         HBox titleBar = new HBox();
         titleBar.setAlignment(Pos.CENTER_RIGHT);
         titleBar.setPadding(new Insets(5, 5, 5, 10));
         titleBar.setStyle("-fx-background-color: #252525; -fx-background-radius: 10 10 0 0;");
 
-        // App title and icon
         HBox titleSection = new HBox(10);
         titleSection.setAlignment(Pos.CENTER_LEFT);
 
-        // Replace the text logo with an image
         ImageView logoImageView = new ImageView();
-        // Adjust the size as needed
         logoImageView.setFitHeight(20);
         logoImageView.setFitWidth(20);
         logoImageView.setPreserveRatio(true);
@@ -112,8 +94,6 @@ public class GlimpseTaskManager extends Application {
         try {
             URL imageUrl = getClass().getResource("/GlimpseLogo1.png");
             if (imageUrl == null) {
-                System.err.println("Logo image not found. Using fallback.");
-                // Fallback to a colored pane if image not found
                 StackPane logoPane = new StackPane();
                 logoPane.setMinSize(20, 20);
                 logoPane.setMaxSize(20, 20);
@@ -128,8 +108,6 @@ public class GlimpseTaskManager extends Application {
                 titleSection.getChildren().add(logoImageView);
             }
         } catch (Exception e) {
-            System.err.println("Error loading logo image: " + e.getMessage());
-            // Fallback to the original letter logo
             StackPane logoPane = new StackPane();
             logoPane.setMinSize(20, 20);
             logoPane.setMaxSize(20, 20);
@@ -140,14 +118,11 @@ public class GlimpseTaskManager extends Application {
             titleSection.getChildren().add(logoPane);
         }
 
-        // App title
         Label titleLabel = new Label("Glimpse");
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
-
         titleSection.getChildren().add(titleLabel);
         HBox.setHgrow(titleSection, Priority.ALWAYS);
 
-        // Window control buttons
         Button minimizeBtn = createWindowButton("—", "#555555", e -> stage.setIconified(true));
         Button maximizeBtn = createWindowButton("□", "#555555", e -> {
             if (stage.isMaximized()) {
@@ -158,7 +133,6 @@ public class GlimpseTaskManager extends Application {
         });
         Button closeBtn = createWindowButton("✕", "#E81123", e -> stage.close());
 
-        // Make the title bar draggable
         titleBar.setOnMousePressed(mouseEvent -> {
             xOffset = mouseEvent.getSceneX();
             yOffset = mouseEvent.getSceneY();
@@ -171,7 +145,6 @@ public class GlimpseTaskManager extends Application {
             }
         });
 
-        // Double click to maximize/restore
         titleBar.setOnMouseClicked(mouseEvent -> {
             if (mouseEvent.getClickCount() == 2) {
                 if (stage.isMaximized()) {
@@ -208,7 +181,6 @@ public class GlimpseTaskManager extends Application {
         sidebar.setPrefWidth(180);
         sidebar.setStyle("-fx-background-color: #252525;");
 
-        // Search box
         HBox searchBox = new HBox();
         TextField searchField = new TextField();
         searchField.setPromptText("Search Devices");
@@ -216,24 +188,16 @@ public class GlimpseTaskManager extends Application {
         searchField.setStyle("-fx-background-color: #3D3D3D; -fx-text-fill: white; -fx-prompt-text-fill: #888888;");
         searchBox.getChildren().add(searchField);
 
-        // Favorites Button
         Button favoritesBtn = createSidebarButton("★ Favorites", "#FFD700");
-
-        // Types header
         Label typesHeader = new Label("Devices");
         typesHeader.setStyle("-fx-text-fill: #888888; -fx-font-size: 12px;");
         typesHeader.setPadding(new Insets(10, 0, 5, 0));
 
-        // Type Buttons
         Button loginBtn = createSidebarButton("💻 Current Device", "white");
-
         Button addStationBtn = createSidebarButton("+ Add Station", "#888888");
         addStationBtn.setDisable(false);
 
-        sidebar.getChildren().addAll(
-                searchBox, favoritesBtn,
-                typesHeader, loginBtn, addStationBtn);
-
+        sidebar.getChildren().addAll(searchBox, favoritesBtn, typesHeader, loginBtn, addStationBtn);
         return sidebar;
     }
 
@@ -243,7 +207,6 @@ public class GlimpseTaskManager extends Application {
         button.setAlignment(Pos.CENTER_LEFT);
         button.setStyle("-fx-background-color: transparent; -fx-text-fill: " + textColor + "; -fx-padding: 8px;");
 
-        // Hover effect
         button.setOnMouseEntered(e -> button.setStyle("-fx-background-color: #3D3D3D; -fx-text-fill: " + textColor + "; -fx-padding: 8px;"));
         button.setOnMouseExited(e -> button.setStyle("-fx-background-color: transparent; -fx-text-fill: " + textColor + "; -fx-padding: 8px;"));
 
@@ -255,7 +218,6 @@ public class GlimpseTaskManager extends Application {
         centerSection.setPadding(new Insets(10));
         centerSection.setStyle("-fx-background-color: #2D2D2D;");
 
-        // Search box
         HBox searchBox = new HBox();
         TextField searchField = new TextField();
         searchField.setPromptText("Search Resources");
@@ -263,7 +225,6 @@ public class GlimpseTaskManager extends Application {
         searchField.setStyle("-fx-background-color: #3D3D3D; -fx-text-fill: white; -fx-prompt-text-fill: #888888;");
         searchBox.getChildren().add(searchField);
 
-        // Resource entries
         VBox entriesBox = new VBox(1);
 
         Button summaryEntry = createResourceEntry("Hardware", "Device Name", new Color(0.42, 0.6, 0.85, 1), "\uD83D\uDD0C");
@@ -276,7 +237,6 @@ public class GlimpseTaskManager extends Application {
 
         summaryEntry.setStyle(summaryEntry.getStyle() + "-fx-background-color: #3D5AFE; -fx-background-radius: 5;");
 
-        // Add selection behavior for all resources
         setupResourceSelection(processEntry);
         setupResourceSelection(summaryEntry);
         setupResourceSelection(cpuEntry);
@@ -285,8 +245,7 @@ public class GlimpseTaskManager extends Application {
         setupResourceSelection(networkEntry);
         setupResourceSelection(diskEntry);
 
-        entriesBox.getChildren().addAll(summaryEntry, processEntry,cpuEntry, gpuEntry, ramEntry, networkEntry, diskEntry);
-
+        entriesBox.getChildren().addAll(summaryEntry, processEntry, cpuEntry, gpuEntry, ramEntry, networkEntry, diskEntry);
         centerSection.getChildren().addAll(entriesBox);
 
         return centerSection;
@@ -296,12 +255,11 @@ public class GlimpseTaskManager extends Application {
         Button entry = new Button();
         entry.setMaxWidth(Double.MAX_VALUE);
         entry.setPadding(new Insets(10));
-        entry.setUserData(resource); // Store resource name for selection
+        entry.setUserData(resource);
 
         HBox contentBox = new HBox(10);
         contentBox.setAlignment(Pos.CENTER_LEFT);
 
-        // Icon
         StackPane iconPane = new StackPane();
         iconPane.setMinSize(30, 30);
         iconPane.setMaxSize(30, 30);
@@ -311,7 +269,6 @@ public class GlimpseTaskManager extends Application {
         iconLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
         iconPane.getChildren().add(iconLabel);
 
-        // Resource and process
         VBox textBox = new VBox(3);
         Label resourceLabel = new Label(resource);
         resourceLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold;");
@@ -320,7 +277,6 @@ public class GlimpseTaskManager extends Application {
         textBox.getChildren().addAll(resourceLabel, processLabel);
 
         contentBox.getChildren().addAll(iconPane, textBox);
-
         entry.setGraphic(contentBox);
         entry.setStyle("-fx-background-color: transparent; -fx-border-width: 0;");
 
@@ -329,7 +285,6 @@ public class GlimpseTaskManager extends Application {
 
     private void setupResourceSelection(Button resourceButton) {
         resourceButton.setOnAction(e -> {
-            // Get all resource buttons and reset their style
             Scene scene = resourceButton.getScene();
             if (scene != null) {
                 VBox entriesBox = (VBox) resourceButton.getParent();
@@ -344,46 +299,112 @@ public class GlimpseTaskManager extends Application {
 
             String resourceName = (String) resourceButton.getUserData();
             selectedResource.set(resourceName);
-
             updateRightPanel();
         });
     }
 
     private void updateRightPanel() {
-        // Still need to add implementation
-        System.out.println("Selected resource: " + selectedResource.get());
+        if (rightSection == null) return;
+
+        rightSection.getChildren().clear();
+
+        HBox iconBox = new HBox();
+        iconBox.setAlignment(Pos.CENTER);
+
+        StackPane iconPane = new StackPane();
+        iconPane.setMinSize(60, 60);
+        iconPane.setMaxSize(60, 60);
+        iconPane.setStyle("-fx-background-radius: 5;");
+
+        Label iconLabel = new Label();
+        iconLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 24px;");
+
+        HBox labelBox = new HBox();
+        labelBox.setAlignment(Pos.CENTER);
+        labelBox.setPadding(new Insets(15, 0, 0, 0));
+
+        Label titleLabel = new Label();
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18px;");
+
+        switch (selectedResource.get()) {
+            case "Hardware":
+                iconPane.setStyle("-fx-background-color: #4285F4; " + iconPane.getStyle());
+                iconLabel.setText("💻");
+                titleLabel.setText("Hardware Overview");
+                break;
+            case "Processes":
+                iconPane.setStyle("-fx-background-color: #EA4335; " + iconPane.getStyle());
+                iconLabel.setText("🖥️");
+                titleLabel.setText("Process Manager");
+                break;
+            case "CPU":
+                iconPane.setStyle("-fx-background-color: #FBBC05; " + iconPane.getStyle());
+                iconLabel.setText("\uD83C\uDFFF");
+                titleLabel.setText("CPU Monitor");
+                break;
+            case "GPU":
+                iconPane.setStyle("-fx-background-color: #34A853; " + iconPane.getStyle());
+                iconLabel.setText("⚙");
+                titleLabel.setText("GPU Monitor");
+                break;
+            case "RAM":
+                iconPane.setStyle("-fx-background-color: #673AB7; " + iconPane.getStyle());
+                iconLabel.setText("\uD83C\uDF9F");
+                titleLabel.setText("Memory Usage");
+                break;
+            case "Network":
+                iconPane.setStyle("-fx-background-color: #FF5722; " + iconPane.getStyle());
+                iconLabel.setText("📡");
+                titleLabel.setText("Network Activity");
+                break;
+            case "Disk":
+                iconPane.setStyle("-fx-background-color: #607D8B; " + iconPane.getStyle());
+                iconLabel.setText("\uD83D\uDCBF");
+                titleLabel.setText("Disk Usage");
+                break;
+            default:
+                iconPane.setStyle("-fx-background-color: #4285F4; " + iconPane.getStyle());
+                iconLabel.setText("💻");
+                titleLabel.setText("Current Device");
+                break;
+        }
+
+        iconPane.getChildren().add(iconLabel);
+        iconBox.getChildren().add(iconPane);
+        labelBox.getChildren().add(titleLabel);
+
+        rightSection.getChildren().addAll(iconBox, labelBox);
     }
 
     private VBox createRightSection() {
         VBox rightSection = new VBox(15);
         rightSection.setPadding(new Insets(15));
         rightSection.setPrefWidth(320);
-        rightSection.setStyle("-fx-background-color: #2D2D2D;");
+        rightSection.setStyle("-fx-background-color: #282828;");
 
-        // Current Device details section
-        // Icon
+        // Initial content
         HBox iconBox = new HBox();
         iconBox.setAlignment(Pos.CENTER);
-        StackPane deviceIconPane = new StackPane();
-        deviceIconPane.setMinSize(60, 60);
-        deviceIconPane.setMaxSize(60, 60);
-        deviceIconPane.setStyle("-fx-background-color: #4285F4; -fx-background-radius: 5;");
 
-        Label deviceIconLabel = new Label("💻");
-        deviceIconLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 24px;");
-        deviceIconPane.getChildren().add(deviceIconLabel);
-        iconBox.getChildren().add(deviceIconPane);
+        StackPane iconPane = new StackPane();
+        iconPane.setMinSize(60, 60);
+        iconPane.setMaxSize(60, 60);
+        iconPane.setStyle("-fx-background-color: #4285F4; -fx-background-radius: 5;");
 
-        // Current Device Label
-        HBox deviceLabelBox = new HBox();
-        deviceLabelBox.setAlignment(Pos.CENTER);
-        deviceLabelBox.setPadding(new Insets(15, 0, 0, 0));
+        Label iconLabel = new Label("💻");
+        iconLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 24px;");
+        iconPane.getChildren().add(iconLabel);
+        iconBox.getChildren().add(iconPane);
 
-        Label currentDeviceLabel = new Label("Current Device");
-        currentDeviceLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18px;");
-        deviceLabelBox.getChildren().add(currentDeviceLabel);
+        HBox labelBox = new HBox();
+        labelBox.setAlignment(Pos.CENTER);
+        labelBox.setPadding(new Insets(15, 0, 0, 0));
 
-        rightSection.getChildren().addAll(iconBox, deviceLabelBox);
+        Label titleLabel = new Label("Hardware Overview");
+        titleLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18px;");
+        labelBox.getChildren().add(titleLabel);
+
+        rightSection.getChildren().addAll(iconBox, labelBox);
 
         return rightSection;
     }
