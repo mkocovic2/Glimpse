@@ -1,6 +1,7 @@
 package com.exodus.glimpse;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.event.ActionEvent;
@@ -20,10 +21,16 @@ import javafx.scene.image.ImageView;
 import java.net.URL;
 
 public class GlimpseTaskManager extends Application {
-    private StringProperty selectedResource = new SimpleStringProperty("Hardware");
+    private final StringProperty selectedResource = new SimpleStringProperty("Hardware");
     private double xOffset = 0;
     private double yOffset = 0;
     private VBox rightSection;
+
+    private ProcessMonitor processMonitor;
+    private CPUMonitor cpuMonitor;
+    private RAMMonitor ramMonitor;
+    private NetworkMonitor networkMonitor;
+    private DiskMonitor diskMonitor;
 
     @Override
     public void start(Stage primaryStage) {
@@ -36,23 +43,32 @@ public class GlimpseTaskManager extends Application {
         root.setTop(titleBar);
 
         SplitPane mainSplitPane = new SplitPane();
-        mainSplitPane.setDividerPositions(0.22, 0.55);
+        mainSplitPane.setDividerPositions(0.15);
         mainSplitPane.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
 
         VBox leftSidebar = createLeftSidebar();
 
         SplitPane contentSplitPane = new SplitPane();
+        contentSplitPane.setDividerPositions(0.55);
         contentSplitPane.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
+
+        // Initialize monitors
+        processMonitor = new ProcessMonitor();
+        cpuMonitor = new CPUMonitor();
+        ramMonitor = new RAMMonitor();
+        networkMonitor = new NetworkMonitor();
+        diskMonitor = new DiskMonitor();
 
         VBox centerSection = createCenterSection();
         rightSection = createRightSection();
 
+        // Add content to split panes
         contentSplitPane.getItems().addAll(centerSection, rightSection);
         mainSplitPane.getItems().addAll(leftSidebar, contentSplitPane);
         root.setCenter(mainSplitPane);
         root.setEffect(new DropShadow(10, Color.rgb(0, 0, 0, 0.5)));
 
-        Scene scene = new Scene(root, 850, 500);
+        Scene scene = new Scene(root, 850, 600); // Increased initial window size
         scene.setFill(Color.TRANSPARENT);
 
         // Load CSS styles
@@ -77,6 +93,7 @@ public class GlimpseTaskManager extends Application {
         primaryStage.initStyle(StageStyle.TRANSPARENT);
         primaryStage.show();
     }
+
     private HBox createTitleBar(Stage stage) {
         HBox titleBar = new HBox();
         titleBar.setAlignment(Pos.CENTER_RIGHT);
@@ -308,6 +325,16 @@ public class GlimpseTaskManager extends Application {
 
         rightSection.getChildren().clear();
 
+        // Create a ScrollPane to wrap the content
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: #282828; -fx-border-color: #282828;");
+
+        // Create a container for all content
+        VBox contentBox = new VBox(15);
+
         HBox iconBox = new HBox();
         iconBox.setAlignment(Pos.CENTER);
 
@@ -328,39 +355,23 @@ public class GlimpseTaskManager extends Application {
 
         switch (selectedResource.get()) {
             case "Hardware":
-                iconPane.setStyle("-fx-background-color: #4285F4; " + iconPane.getStyle());
-                iconLabel.setText("💻");
-                titleLabel.setText("Hardware Overview");
                 break;
             case "Processes":
-                iconPane.setStyle("-fx-background-color: #EA4335; " + iconPane.getStyle());
-                iconLabel.setText("🖥️");
-                titleLabel.setText("Process Manager");
+                contentBox.getChildren().add(processMonitor.createProcessMonitorPanel());
                 break;
             case "CPU":
-                iconPane.setStyle("-fx-background-color: #FBBC05; " + iconPane.getStyle());
-                iconLabel.setText("\uD83C\uDFFF");
-                titleLabel.setText("CPU Monitor");
+                contentBox.getChildren().add(cpuMonitor.createCPUMonitorPanel());
                 break;
             case "GPU":
-                iconPane.setStyle("-fx-background-color: #34A853; " + iconPane.getStyle());
-                iconLabel.setText("⚙");
-                titleLabel.setText("GPU Monitor");
                 break;
             case "RAM":
-                iconPane.setStyle("-fx-background-color: #673AB7; " + iconPane.getStyle());
-                iconLabel.setText("\uD83C\uDF9F");
-                titleLabel.setText("Memory Usage");
+                contentBox.getChildren().add(ramMonitor.createRAMMonitorPanel());
                 break;
             case "Network":
-                iconPane.setStyle("-fx-background-color: #FF5722; " + iconPane.getStyle());
-                iconLabel.setText("📡");
-                titleLabel.setText("Network Activity");
+                contentBox.getChildren().add(networkMonitor.createNetworkMonitorPanel());
                 break;
             case "Disk":
-                iconPane.setStyle("-fx-background-color: #607D8B; " + iconPane.getStyle());
-                iconLabel.setText("\uD83D\uDCBF");
-                titleLabel.setText("Disk Usage");
+                contentBox.getChildren().add(diskMonitor.createDiskMonitorPanel());
                 break;
             default:
                 iconPane.setStyle("-fx-background-color: #4285F4; " + iconPane.getStyle());
@@ -373,16 +384,27 @@ public class GlimpseTaskManager extends Application {
         iconBox.getChildren().add(iconPane);
         labelBox.getChildren().add(titleLabel);
 
-        rightSection.getChildren().addAll(iconBox, labelBox);
+        if (contentBox.getChildren().isEmpty()) {
+            contentBox.getChildren().addAll(iconBox, labelBox);
+        }
+
+        scrollPane.setContent(contentBox);
+
+        rightSection.getChildren().add(scrollPane);
     }
 
     private VBox createRightSection() {
         VBox rightSection = new VBox(15);
         rightSection.setPadding(new Insets(15));
-        rightSection.setPrefWidth(320);
+        rightSection.setPrefWidth(900);
         rightSection.setStyle("-fx-background-color: #282828;");
 
-        // Initial content
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setStyle("-fx-background: #282828; -fx-border-color: #282828;");
+
         HBox iconBox = new HBox();
         iconBox.setAlignment(Pos.CENTER);
 
@@ -404,7 +426,11 @@ public class GlimpseTaskManager extends Application {
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18px;");
         labelBox.getChildren().add(titleLabel);
 
-        rightSection.getChildren().addAll(iconBox, labelBox);
+        VBox contentBox = new VBox(15);
+        contentBox.getChildren().addAll(iconBox, labelBox);
+
+        scrollPane.setContent(contentBox);
+        rightSection.getChildren().add(scrollPane);
 
         return rightSection;
     }
@@ -417,6 +443,31 @@ public class GlimpseTaskManager extends Application {
                 color.getOpacity());
     }
 
+    @Override
+    public void stop() throws Exception {
+        // Shutdown all monitors
+        if (processMonitor != null) {
+            processMonitor.shutdown();
+        }
+        if (cpuMonitor != null) {
+            cpuMonitor.shutdown();
+        }
+        if (ramMonitor != null) {
+            ramMonitor.shutdown();
+        }
+        if (diskMonitor != null) {
+            diskMonitor.shutdown();
+        }
+        if (networkMonitor != null) {
+            networkMonitor.shutdown();
+        }
+
+        // Force exit the application
+        Platform.exit();
+        System.exit(0);
+
+        super.stop();
+    }
     public static void main(String[] args) {
         launch(args);
     }
