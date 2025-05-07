@@ -1,3 +1,9 @@
+/* Main window styling */
+.root {
+    -fx-background-color: transparent;
+}
+
+/* Split pane divider styling */
 .split-pane-divider {
     -fx-background-color: transparent;
     -fx-padding: 0;
@@ -9,9 +15,6 @@
     -fx-padding: 0;
     -fx-opacity: 0;
 }
-.root {
-    -fx-background-color: transparent;
-}
 
 .split-pane *.split-pane-divider {
     -fx-padding: 0;
@@ -19,6 +22,7 @@
     -fx-opacity: 0;
 }
 
+/* Scroll bar styling */
 .scroll-bar:vertical,
 .scroll-bar:horizontal {
     -fx-background-color: #2D2D2D;
@@ -38,11 +42,154 @@
     -fx-padding: 0 0 0 0;
 }
 
+/* Text field styling */
 .text-field {
     -fx-background-radius: 5;
     -fx-border-radius: 5;
+    -fx-background-color: #3D3D3D;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #888888;
 }
 
+/* Button styling */
 .button {
     -fx-cursor: hand;
+    -fx-background-color: #3D3D3D;
+    -fx-text-fill: white;
+    -fx-background-radius: 5;
+    -fx-padding: 8px 16px;
+    -fx-font-size: 12px;
+}
+
+.button:hover {
+    -fx-background-color: #4D4D4D;
+}
+
+.button:pressed {
+    -fx-background-color: #2D2D2D;
+}
+
+.button:focused {
+    -fx-border-color: #3D5AFE;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+}
+
+/* Special button styles */
+.window-button {
+    -fx-min-width: 30;
+    -fx-min-height: 20;
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 10px;
+}
+
+.sidebar-button {
+    -fx-background-color: transparent;
+    -fx-alignment: CENTER_LEFT;
+    -fx-padding: 8px;
+}
+
+.resource-entry {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+}
+
+.danger-button {
+    -fx-background-color: #EA4335;
+    -fx-text-fill: white;
+}
+
+.danger-button:hover {
+    -fx-background-color: #FF5722;
+}
+
+/* Chart styling */
+.chart {
+    -fx-background-color: #ffffff;
+    -fx-legend-side: top;
+    -fx-legend-visible: false;
+}
+
+.chart-content {
+    -fx-padding: 10px;
+}
+
+.chart-title {
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
+
+.axis {
+    -fx-tick-label-fill: #BBBBBB;
+    -fx-tick-length: 5px;
+    -fx-minor-tick-length: 3px;
+}
+
+.axis-label {
+    -fx-text-fill: #BBBBBB;
+}
+
+.chart-plot-background {
+    -fx-background-color: #262626;
+}
+
+.chart-vertical-grid-lines,
+.chart-horizontal-grid-lines {
+    -fx-stroke: #3D3D3D;
+}
+
+.chart-series-line {
+    -fx-stroke-width: 2px;
+}
+
+.default-color0.chart-series-line { -fx-stroke: #3D5AFE; }
+.default-color1.chart-series-line { -fx-stroke: #EA4335; }
+.default-color2.chart-series-line { -fx-stroke: #FBBC05; }
+
+/* Table styling */
+.table-view {
+    -fx-background-color: #2D2D2D;
+    -fx-table-cell-border-color: transparent;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #3D3D3D;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: #555555;
+}
+
+.table-view .table-cell {
+    -fx-text-fill: white;
+    -fx-border-width: 0;
+    -fx-padding: 8px;
+}
+
+.table-row-cell {
+    -fx-background-color: #2D2D2D;
+    -fx-border-width: 0;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #252525;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #3D5AFE;
+    -fx-text-fill: white;
+}
+
+/* Scroll pane styling */
+.scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane > .viewport {
+    -fx-background-color: transparent;
 }

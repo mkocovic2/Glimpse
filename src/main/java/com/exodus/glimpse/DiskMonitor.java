@@ -7,13 +7,8 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.chart.CategoryAxis;
-import javafx.scene.chart.LineChart;
-import javafx.scene.chart.NumberAxis;
-import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import oshi.SystemInfo;
@@ -22,6 +17,9 @@ import oshi.hardware.HardwareAbstractionLayer;
 import oshi.software.os.FileSystem;
 import oshi.software.os.OSFileStore;
 import oshi.software.os.OperatingSystem;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -38,6 +36,7 @@ public class DiskMonitor {
     private final OperatingSystem os;
     private final FileSystem fileSystem;
     private final ComboBox<String> diskSelector;
+    private RemoteStation remoteStation;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final SimpleStringProperty currentDisk = new SimpleStringProperty("N/A");
@@ -51,12 +50,7 @@ public class DiskMonitor {
     private final SimpleStringProperty readTime = new SimpleStringProperty("0 ms");
     private final SimpleStringProperty writeTime = new SimpleStringProperty("0 ms");
 
-    private final XYChart.Series<String, Number> readSeries = new XYChart.Series<>();
-    private final XYChart.Series<String, Number> writeSeries = new XYChart.Series<>();
     private final ObservableList<DiskPartition> partitionData = FXCollections.observableArrayList();
-
-    private final int MAX_DATA_POINTS = 60;
-    private int xSeriesData = 0;
 
     private final Map<String, DiskStats> previousStats = new HashMap<>();
     private OSFileStore currentFileStore;
@@ -73,49 +67,11 @@ public class DiskMonitor {
         // Initialize disk selector
         diskSelector = new ComboBox<>();
 
-        // Set up data series
-        readSeries.setName("Read (KB/s)");
-        writeSeries.setName("Write (KB/s)");
-
         // Update disks list
         updateDiskList();
 
         // Start monitoring
         startMonitoring();
-    }
-
-    private void updateDiskList() {
-        List<String> diskNames = new ArrayList<>();
-        List<OSFileStore> fileStores = fileSystem.getFileStores();
-
-        for (OSFileStore store : fileStores) {
-            String name = store.getName() + " (" + store.getMount() + ")";
-            diskNames.add(name);
-
-            // Initialize stats for this disk
-            if (!previousStats.containsKey(store.getName())) {
-                // Try to find matching HWDiskStore
-                for (HWDiskStore disk : hardware.getDiskStores()) {
-                    if (store.getName().contains(disk.getName())) {
-                        previousStats.put(store.getName(), new DiskStats(
-                                disk.getReadBytes(),
-                                disk.getWriteBytes(),
-                                disk.getTimeStamp(),
-                                System.currentTimeMillis()
-                        ));
-                        break;
-                    }
-                }
-            }
-        }
-
-        Platform.runLater(() -> {
-            diskSelector.getItems().setAll(diskNames);
-            if (!diskNames.isEmpty()) {
-                diskSelector.getSelectionModel().selectFirst();
-                updateSelectedDisk(0);
-            }
-        });
     }
 
     public VBox createDiskMonitorPanel() {
@@ -142,18 +98,63 @@ public class DiskMonitor {
         // Disk Usage Section
         VBox usageSection = createDiskUsageSection();
 
-        // Disk I/O Performance Chart
-        LineChart<String, Number> ioChart = createDiskIOChart();
-        VBox.setVgrow(ioChart, Priority.ALWAYS);
-
         // Disk Partitions Table
         TableView<DiskPartition> partitionTable = createPartitionTable();
         VBox.setVgrow(partitionTable, Priority.ALWAYS);
 
         // Add all components to main container
-        monitorPanel.getChildren().addAll(selectorPanel, usageSection, ioChart, partitionTable);
+        monitorPanel.getChildren().addAll(selectorPanel, usageSection, partitionTable);
 
         return monitorPanel;
+    }
+
+    private void updateDiskList() {
+        if (remoteStation != null) {
+            // For remote monitoring, we'll just show a single "Remote" disk
+            Platform.runLater(() -> {
+                diskSelector.getItems().setAll("Remote Disk");
+                diskSelector.getSelectionModel().selectFirst();
+                currentDisk.set("Remote");
+                diskModel.set("Remote");
+                diskSize.set("Remote");
+                diskFree.set("Remote");
+                diskUsed.set("Remote");
+                diskUsagePercent.set(0);
+            });
+        } else {
+            // Local monitoring
+            List<String> diskNames = new ArrayList<>();
+            List<OSFileStore> fileStores = fileSystem.getFileStores();
+
+            for (OSFileStore store : fileStores) {
+                String name = store.getName() + " (" + store.getMount() + ")";
+                diskNames.add(name);
+
+                // Initialize stats for this disk
+                if (!previousStats.containsKey(store.getName())) {
+                    // Try to find matching HWDiskStore
+                    for (HWDiskStore disk : hardware.getDiskStores()) {
+                        if (store.getName().contains(disk.getName())) {
+                            previousStats.put(store.getName(), new DiskStats(
+                                    disk.getReadBytes(),
+                                    disk.getWriteBytes(),
+                                    disk.getTimeStamp(),
+                                    System.currentTimeMillis()
+                            ));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            Platform.runLater(() -> {
+                diskSelector.getItems().setAll(diskNames);
+                if (!diskNames.isEmpty()) {
+                    diskSelector.getSelectionModel().selectFirst();
+                    updateSelectedDisk(0);
+                }
+            });
+        }
     }
 
     private VBox createDiskUsageSection() {
@@ -290,44 +291,6 @@ public class DiskMonitor {
         return usageSection;
     }
 
-    private LineChart<String, Number> createDiskIOChart() {
-        final CategoryAxis xAxis = new CategoryAxis();
-        final NumberAxis yAxis = new NumberAxis();
-
-        xAxis.setLabel("Time");
-        xAxis.setAnimated(false);
-        yAxis.setLabel("Transfer Rate (KB/s)");
-        yAxis.setAnimated(false);
-
-        final LineChart<String, Number> lineChart = new LineChart<>(xAxis, yAxis);
-        lineChart.setTitle("Disk I/O Performance");
-        lineChart.setCreateSymbols(false);
-        lineChart.setAnimated(false);
-        lineChart.getData().addAll(readSeries, writeSeries);
-
-        lineChart.setStyle(
-                "-fx-background-color: #323232; " +
-                        "-fx-plot-background-color: #262626; " +
-                        "-fx-text-fill: white;"
-        );
-
-        // Style the axes
-        xAxis.setTickLabelFill(Color.WHITE);
-        yAxis.setTickLabelFill(Color.WHITE);
-
-        // Style the chart title
-        lineChart.lookup(".chart-title").setStyle("-fx-text-fill: white; -fx-font-size: 14px;");
-
-        // Style the legend
-        lineChart.lookup(".chart-legend").setStyle("-fx-text-fill: white;");
-
-        // Style the series
-        readSeries.getNode().lookup(".chart-series-line").setStyle("-fx-stroke: #4CAF50; -fx-stroke-width: 2px;");
-        writeSeries.getNode().lookup(".chart-series-line").setStyle("-fx-stroke: #2196F3; -fx-stroke-width: 2px;");
-
-        return lineChart;
-    }
-
     private TableView<DiskPartition> createPartitionTable() {
         TableView<DiskPartition> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -374,6 +337,17 @@ public class DiskMonitor {
     }
 
     private void updateSelectedDisk(int index) {
+        if (remoteStation != null) {
+            // For remote monitoring, we don't have multiple disks
+            currentDisk.set("Remote");
+            diskModel.set("Remote");
+            diskSize.set("Remote");
+            diskFree.set("Remote");
+            diskUsed.set("Remote");
+            diskUsagePercent.set(0);
+            return;
+        }
+
         List<OSFileStore> fileStores = fileSystem.getFileStores();
         if (index < 0 || index >= fileStores.size()) {
             return;
@@ -395,113 +369,169 @@ public class DiskMonitor {
             diskModel.set("Unknown");
         }
 
-        // Reset chart data
-        Platform.runLater(() -> {
-            readSeries.getData().clear();
-            writeSeries.getData().clear();
-            xSeriesData = 0;
-        });
-
         // Update disk space info
         updateDiskSpaceInfo();
     }
 
     private void updateDiskInfo() {
-        if (currentFileStore == null) {
-            return;
-        }
-
-        // Update file store
-        List<OSFileStore> updatedStores = fileSystem.getFileStores();
-        for (OSFileStore store : updatedStores) {
-            if (store.getName().equals(currentFileStore.getName())) {
-                currentFileStore = store;
-                break;
-            }
-        }
-
-        // Update disk space info
-        updateDiskSpaceInfo();
-
-        // Update I/O stats if we have a matching HWDiskStore
-        if (currentDiskStore != null) {
-            currentDiskStore.updateAttributes();
-
-            String diskName = currentFileStore.getName();
-            DiskStats prevStats = previousStats.get(diskName);
-
-            if (prevStats != null) {
-                long currentReadBytes = currentDiskStore.getReadBytes();
-                long currentWriteBytes = currentDiskStore.getWriteBytes();
-                long currentTime = System.currentTimeMillis();
-
-                long readDiff = currentReadBytes - prevStats.readBytes;
-                long writeDiff = currentWriteBytes - prevStats.writeBytes;
-                double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
-
-                // Calculate speeds in KB/s
-                double readRate = timeSeconds > 0 ? readDiff / (1024.0 * timeSeconds) : 0;
-                double writeRate = timeSeconds > 0 ? writeDiff / (1024.0 * timeSeconds) : 0;
-
-                // Calculate transfer times (using transfer time as approximation)
-                double currentReadTime;
-                double currentWriteTime;
-
-                if (currentDiskStore.getReads() > 0) {
-                    currentReadTime = currentDiskStore.getTransferTime() / currentDiskStore.getReads();
-                } else {
-                    currentReadTime = 0;
-                }
-
-                if (currentDiskStore.getWrites() > 0) {
-                    currentWriteTime = currentDiskStore.getTransferTime() / currentDiskStore.getWrites();
-                } else {
-                    currentWriteTime = 0;
-                }
-
-                // Update previous stats
-                previousStats.put(diskName, new DiskStats(
-                        currentReadBytes,
-                        currentWriteBytes,
-                        currentDiskStore.getTimeStamp(),
-                        currentTime
-                ));
-
-                // Update UI
+        if (remoteStation != null) {
+            // Remote monitoring mode
+            try {
+                String response = remoteStation.getDiskUsage();
                 Platform.runLater(() -> {
-                    // Update speed labels
-                    readSpeed.set(formatSpeed(readRate));
-                    writeSpeed.set(formatSpeed(writeRate));
+                    try {
+                        JSONObject json = new JSONObject(response);
+                        JSONArray partitions = json.getJSONArray("partitions");
 
-                    // Update time labels if we have valid values
-                    if (!Double.isNaN(currentReadTime) && !Double.isInfinite(currentReadTime) && currentReadTime > 0) {
-                        readTime.set(df.format(currentReadTime) + " ms");
-                    }
-                    if (!Double.isNaN(currentWriteTime) && !Double.isInfinite(currentWriteTime) && currentWriteTime > 0) {
-                        writeTime.set(df.format(currentWriteTime) + " ms");
-                    }
+                        if (partitions.length() > 0) {
+                            JSONObject diskData = partitions.getJSONObject(0);
 
-                    // Get current timestamp for x-axis
-                    String timeStamp = String.valueOf(xSeriesData % MAX_DATA_POINTS);
+                            // Update disk space info
+                            long totalSpace = diskData.getLong("total");
+                            long usedSpace = diskData.getLong("used");
+                            long freeSpace = diskData.getLong("free");
+                            double usagePercentValue = (double) usedSpace / totalSpace * 100;
 
-                    // Add new data points
-                    readSeries.getData().add(new XYChart.Data<>(timeStamp, readRate));
-                    writeSeries.getData().add(new XYChart.Data<>(timeStamp, writeRate));
-                    xSeriesData++;
+                            diskSize.set(formatBytes(totalSpace));
+                            diskUsed.set(formatBytes(usedSpace));
+                            diskFree.set(formatBytes(freeSpace));
+                            diskUsagePercent.set(usagePercentValue);
 
-                    // Remove old data points if we exceed the maximum
-                    if (readSeries.getData().size() > MAX_DATA_POINTS) {
-                        readSeries.getData().remove(0);
-                    }
-                    if (writeSeries.getData().size() > MAX_DATA_POINTS) {
-                        writeSeries.getData().remove(0);
+                            // Update I/O stats if available
+                            JSONObject ioCounters = diskData.optJSONObject("io_counters");
+                            if (ioCounters != null) {
+                                String diskName = "Remote";
+                                DiskStats prevStats = previousStats.get(diskName);
+
+                                long readBytes = ioCounters.getLong("read_bytes");
+                                long writeBytes = ioCounters.getLong("write_bytes");
+                                long currentTime = System.currentTimeMillis();
+
+                                if (prevStats != null) {
+                                    long readDiff = readBytes - prevStats.readBytes;
+                                    long writeDiff = writeBytes - prevStats.writeBytes;
+                                    double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
+
+                                    // Calculate speeds in KB/s
+                                    double readRate = timeSeconds > 0 ? readDiff / (1024.0 * timeSeconds) : 0;
+                                    double writeRate = timeSeconds > 0 ? writeDiff / (1024.0 * timeSeconds) : 0;
+
+                                    // Update previous stats
+                                    previousStats.put(diskName, new DiskStats(
+                                            readBytes,
+                                            writeBytes,
+                                            currentTime, // Using current time as disk timestamp for remote
+                                            currentTime
+                                    ));
+
+                                    // Update UI
+                                    readSpeed.set(formatSpeed(readRate));
+                                    writeSpeed.set(formatSpeed(writeRate));
+                                } else {
+                                    // First reading - just store the stats
+                                    previousStats.put(diskName, new DiskStats(
+                                            readBytes,
+                                            writeBytes,
+                                            currentTime,
+                                            currentTime
+                                    ));
+                                }
+                            }
+                        }
+                    } catch (JSONException e) {
+                        System.err.println("Error parsing disk API response: " + e.getMessage());
                     }
                 });
+            } catch (Exception e) {
+                System.err.println("Error fetching remote disk data: " + e.getMessage());
+            }
+        } else {
+            // Local monitoring mode
+            if (currentFileStore == null) {
+                return;
+            }
+
+            // Update file store
+            List<OSFileStore> updatedStores = fileSystem.getFileStores();
+            for (OSFileStore store : updatedStores) {
+                if (store.getName().equals(currentFileStore.getName())) {
+                    currentFileStore = store;
+                    break;
+                }
+            }
+
+            // Update disk space info
+            updateDiskSpaceInfo();
+
+            // Update I/O stats if we have a matching HWDiskStore
+            if (currentDiskStore != null) {
+                currentDiskStore.updateAttributes();
+
+                String diskName = currentFileStore.getName();
+                DiskStats prevStats = previousStats.get(diskName);
+
+                if (prevStats != null) {
+                    long currentReadBytes = currentDiskStore.getReadBytes();
+                    long currentWriteBytes = currentDiskStore.getWriteBytes();
+                    long currentTime = System.currentTimeMillis();
+
+                    long readDiff = currentReadBytes - prevStats.readBytes;
+                    long writeDiff = currentWriteBytes - prevStats.writeBytes;
+                    double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
+
+                    // Calculate speeds in KB/s
+                    double readRate = timeSeconds > 0 ? readDiff / (1024.0 * timeSeconds) : 0;
+                    double writeRate = timeSeconds > 0 ? writeDiff / (1024.0 * timeSeconds) : 0;
+
+                    // Calculate transfer times (using transfer time as approximation)
+                    double currentReadTime;
+                    double currentWriteTime;
+
+                    if (currentDiskStore.getReads() > 0) {
+                        currentReadTime = currentDiskStore.getTransferTime() / currentDiskStore.getReads();
+                    } else {
+                        currentReadTime = 0;
+                    }
+
+                    if (currentDiskStore.getWrites() > 0) {
+                        currentWriteTime = currentDiskStore.getTransferTime() / currentDiskStore.getWrites();
+                    } else {
+                        currentWriteTime = 0;
+                    }
+
+                    // Update previous stats
+                    previousStats.put(diskName, new DiskStats(
+                            currentReadBytes,
+                            currentWriteBytes,
+                            currentDiskStore.getTimeStamp(),
+                            currentTime
+                    ));
+
+                    // Update UI
+                    Platform.runLater(() -> {
+                        // Update speed labels
+                        readSpeed.set(formatSpeed(readRate));
+                        writeSpeed.set(formatSpeed(writeRate));
+
+                        // Update time labels if we have valid values
+                        if (!Double.isNaN(currentReadTime) && !Double.isInfinite(currentReadTime) && currentReadTime > 0) {
+                            readTime.set(df.format(currentReadTime) + " ms");
+                        }
+                        if (!Double.isNaN(currentWriteTime) && !Double.isInfinite(currentWriteTime) && currentWriteTime > 0) {
+                            writeTime.set(df.format(currentWriteTime) + " ms");
+                        }
+                    });
+                }
             }
         }
     }
 
     private void updateDiskSpaceInfo() {
+        if (remoteStation != null) {
+            // For remote monitoring, this is handled in updateDiskInfo()
+            return;
+        }
+
         long totalSpace = currentFileStore.getTotalSpace();
         long usableSpace = currentFileStore.getUsableSpace();
         long usedSpace = totalSpace - usableSpace;
@@ -516,29 +546,65 @@ public class DiskMonitor {
     }
 
     private void updatePartitionInfo() {
-        List<OSFileStore> fileStores = fileSystem.getFileStores();
+        if (remoteStation != null) {
+            // Remote partition info
+            try {
+                String response = remoteStation.getDiskUsage();
+                Platform.runLater(() -> {
+                    try {
+                        JSONObject json = new JSONObject(response);
+                        JSONArray partitions = json.getJSONArray("partitions");
+                        partitionData.clear();
 
-        Platform.runLater(() -> {
-            partitionData.clear();
+                        for (int i = 0; i < partitions.length(); i++) {
+                            JSONObject partition = partitions.getJSONObject(i);
+                            long total = partition.getLong("total");
+                            long used = partition.getLong("used");
+                            long free = partition.getLong("free");
+                            double percentUsed = (double) used / total * 100;
 
-            for (OSFileStore store : fileStores) {
-                long totalSpace = store.getTotalSpace();
-                if (totalSpace <= 0) continue; // Skip invalid partitions
-
-                long usableSpace = store.getUsableSpace();
-                long usedSpace = totalSpace - usableSpace;
-                double percentUsed = (double) usedSpace / totalSpace * 100;
-
-                partitionData.add(new DiskPartition(
-                        store.getName(),
-                        store.getMount(),
-                        store.getType(),
-                        formatBytes(totalSpace),
-                        formatBytes(usedSpace),
-                        df.format(percentUsed) + "%"
-                ));
+                            partitionData.add(new DiskPartition(
+                                    partition.optString("device", "Unknown"),
+                                    partition.optString("mountpoint", "N/A"),
+                                    partition.optString("fstype", "N/A"),
+                                    formatBytes(total),
+                                    formatBytes(used),
+                                    df.format(percentUsed) + "%"
+                            ));
+                        }
+                    } catch (JSONException e) {
+                        System.err.println("Error parsing partition API response: " + e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Error fetching remote partition data: " + e.getMessage());
             }
-        });
+        } else {
+            // Local partition info
+            List<OSFileStore> fileStores = fileSystem.getFileStores();
+
+            Platform.runLater(() -> {
+                partitionData.clear();
+
+                for (OSFileStore store : fileStores) {
+                    long totalSpace = store.getTotalSpace();
+                    if (totalSpace <= 0) continue; // Skip invalid partitions
+
+                    long usableSpace = store.getUsableSpace();
+                    long usedSpace = totalSpace - usableSpace;
+                    double percentUsed = (double) usedSpace / totalSpace * 100;
+
+                    partitionData.add(new DiskPartition(
+                            store.getName(),
+                            store.getMount(),
+                            store.getType(),
+                            formatBytes(totalSpace),
+                            formatBytes(usedSpace),
+                            df.format(percentUsed) + "%"
+                    ));
+                }
+            });
+        }
     }
 
     private String formatSpeed(double kbps) {
@@ -559,6 +625,11 @@ public class DiskMonitor {
         } else {
             return df.format(bytes / (1024.0 * 1024 * 1024)) + " GB";
         }
+    }
+
+    public void setRemoteStation(RemoteStation remoteStation) {
+        this.remoteStation = remoteStation;
+        updateDiskList();
     }
 
     public void shutdown() {

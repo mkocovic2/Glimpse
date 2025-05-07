@@ -4,6 +4,8 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Insets;
@@ -17,10 +19,12 @@ import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.scene.image.ImageView;
+import java.util.Optional;
 
 import java.net.URL;
 
 public class GlimpseTaskManager extends Application {
+    private final ObservableList<RemoteStation> remoteStations = FXCollections.observableArrayList();
     private final StringProperty selectedResource = new SimpleStringProperty("Hardware");
     private double xOffset = 0;
     private double yOffset = 0;
@@ -211,10 +215,41 @@ public class GlimpseTaskManager extends Application {
         typesHeader.setPadding(new Insets(10, 0, 5, 0));
 
         Button loginBtn = createSidebarButton("💻 Current Device", "white");
-        Button addStationBtn = createSidebarButton("+ Add Station", "#888888");
+        Button addStationBtn = createSidebarButton("+ Add Remote Station", "#888888");
         addStationBtn.setDisable(false);
 
-        sidebar.getChildren().addAll(searchBox, favoritesBtn, typesHeader, loginBtn, addStationBtn);
+        addStationBtn.setOnAction(e -> {
+            AddStationDialog dialog = new AddStationDialog();
+            Optional<RemoteStation> result = dialog.showAndWait();
+
+            result.ifPresent(station -> {
+                remoteStations.add(station);
+                Button stationBtn = createSidebarButton("🌐 " + dialog.nameField.getText(), "white");
+                stationBtn.setOnAction(event -> {
+                    processMonitor.setRemoteStation(station);
+                    cpuMonitor.setRemoteStation(station);
+                    ramMonitor.setRemoteStation(station);
+                    networkMonitor.setRemoteStation(station);
+                    diskMonitor.setRemoteStation(station);
+
+                    updateRightPanel();
+                });
+                sidebar.getChildren().add(sidebar.getChildren().size() - 2, stationBtn);
+            });
+        });
+
+        Button localMonitorBtn = createSidebarButton("🖥️ Local Monitoring", "#BBBBBB");
+        localMonitorBtn.setOnAction(e -> {
+            processMonitor.setRemoteStation(null);
+            cpuMonitor.setRemoteStation(null);
+            ramMonitor.setRemoteStation(null);
+            networkMonitor.setRemoteStation(null);
+            diskMonitor.setRemoteStation(null);
+
+            updateRightPanel();
+        });
+
+        sidebar.getChildren().addAll(searchBox, favoritesBtn, typesHeader, loginBtn, localMonitorBtn, addStationBtn);
         return sidebar;
     }
 
@@ -462,7 +497,6 @@ public class GlimpseTaskManager extends Application {
             networkMonitor.shutdown();
         }
 
-        // Force exit the application
         Platform.exit();
         System.exit(0);
 

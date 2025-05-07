@@ -7,6 +7,11 @@ module com.exodus.glimpse {
     requires org.kordamp.ikonli.javafx;
     requires org.kordamp.bootstrapfx.core;
     requires eu.hansolo.tilesfx;
+    requires java.management;
+    requires com.github.oshi;
+    requires com.sun.jna;
+    requires jsch;
+    requires org.json;
 
     opens com.exodus.glimpse to javafx.fxml;
     exports com.exodus.glimpse;

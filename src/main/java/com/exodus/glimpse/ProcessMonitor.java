@@ -11,8 +11,12 @@ import javafx.scene.layout.*;
 import oshi.SystemInfo;
 import oshi.software.os.OSProcess;
 import oshi.software.os.OperatingSystem;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.json.JSONException;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -26,7 +30,7 @@ public class ProcessMonitor {
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final ObservableList<ProcessInfo> processData = FXCollections.observableArrayList();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-
+    private RemoteStation remoteStation;
     private SortOrder currentSortOrder = SortOrder.CPU_DESC;
     private boolean showAllProcesses = false;
 
@@ -226,6 +230,14 @@ public class ProcessMonitor {
     }
 
     private void updateProcessInfo() {
+        if (remoteStation != null) {
+            updateRemoteProcessInfo();
+        } else {
+            updateLocalProcessInfo();
+        }
+    }
+
+    private void updateLocalProcessInfo() {
         List<OSProcess> processes = os.getProcesses();
 
         List<ProcessInfo> processInfoList = processes.stream()
@@ -257,8 +269,63 @@ public class ProcessMonitor {
         });
     }
 
+    private void updateRemoteProcessInfo() {
+        try {
+            String response = remoteStation.getTopProcesses();
+            JSONArray processes = new JSONArray(response);
+            List<ProcessInfo> processInfoList = new ArrayList<>();
+
+            for (int i = 0; i < processes.length(); i++) {
+                try {
+                    JSONObject proc = processes.getJSONObject(i);
+                    String name = proc.getString("name");
+                    if (name.length() > 30) {
+                        name = name.substring(0, 27) + "...";
+                    }
+
+                    double cpuUsage = proc.getDouble("cpu_percent");
+                    long memBytes = proc.has("memory_bytes") ?
+                            proc.getLong("memory_bytes") :
+                            (long)(proc.getDouble("memory_percent") * 0.01 * 8 * 1024 * 1024 * 1024); // Estimate if bytes not available
+
+                    int pid = proc.getInt("pid");
+                    int threadCount = proc.optInt("thread_count", 0);
+                    String user = proc.optString("username", "N/A");
+
+                    processInfoList.add(new ProcessInfo(
+                            name,
+                            pid,
+                            cpuUsage,
+                            memBytes,
+                            threadCount,
+                            user
+                    ));
+                } catch (JSONException e) {
+                    System.err.println("Error parsing process data: " + e.getMessage());
+                }
+            }
+
+            // Sort based on current sort order
+            processInfoList.sort(currentSortOrder.getComparator());
+
+            Platform.runLater(() -> {
+                processData.setAll(processInfoList);
+            });
+        } catch (Exception e) {
+            System.err.println("Remote process monitoring error: " + e.getMessage());
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Remote Monitoring Error");
+                alert.setHeaderText("Failed to fetch remote process data");
+                alert.setContentText(e.getMessage());
+                alert.showAndWait();
+            });
+        }
+    }
+
     private void killSelectedProcess() {
-        // We can add something like this later, might not have time
+        // Implementation for killing processes would go here
+        // This would need to be different for local vs remote
     }
 
     private void showProcessDetails(ProcessInfo process) {
@@ -295,6 +362,10 @@ public class ProcessMonitor {
         } else {
             return df.format(bytes / (1024.0 * 1024 * 1024)) + " GB";
         }
+    }
+
+    public void setRemoteStation(RemoteStation remoteStation) {
+        this.remoteStation = remoteStation;
     }
 
     public void shutdown() {

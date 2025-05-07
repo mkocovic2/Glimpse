@@ -16,6 +16,9 @@ import javafx.scene.text.FontWeight;
 import oshi.SystemInfo;
 import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ public class NetworkMonitor {
     private final HardwareAbstractionLayer hardware;
     private final List<NetworkIF> networkInterfaces;
     private final ComboBox<String> interfaceSelector;
+    private RemoteStation remoteStation;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final SimpleStringProperty currentInterface = new SimpleStringProperty("N/A");
@@ -72,33 +76,6 @@ public class NetworkMonitor {
 
         // Start monitoring
         startMonitoring();
-    }
-
-    private void updateNetworkInterfaces() {
-        List<String> interfaceNames = new ArrayList<>();
-
-        for (NetworkIF netIF : networkInterfaces) {
-            netIF.updateAttributes();
-            String name = netIF.getName() + " (" + netIF.getDisplayName() + ")";
-            interfaceNames.add(name);
-
-            // Initialize stats for this interface
-            if (!previousStats.containsKey(netIF.getName())) {
-                previousStats.put(netIF.getName(), new NetworkStats(
-                        netIF.getBytesRecv(),
-                        netIF.getBytesSent(),
-                        System.currentTimeMillis()
-                ));
-            }
-        }
-
-        Platform.runLater(() -> {
-            interfaceSelector.getItems().setAll(interfaceNames);
-            if (!interfaceNames.isEmpty()) {
-                interfaceSelector.getSelectionModel().selectFirst();
-                updateSelectedInterface(0);
-            }
-        });
     }
 
     public VBox createNetworkMonitorPanel() {
@@ -153,6 +130,46 @@ public class NetworkMonitor {
         monitorPanel.getChildren().addAll(topPanel, statsBox, networkChart, connectionTable);
 
         return monitorPanel;
+    }
+
+    private void updateNetworkInterfaces() {
+        if (remoteStation != null) {
+            // For remote monitoring, we'll just show a single "Remote" interface
+            Platform.runLater(() -> {
+                interfaceSelector.getItems().setAll("Remote Connection");
+                interfaceSelector.getSelectionModel().selectFirst();
+                currentInterface.set("Remote");
+                ipAddress.set("Remote");
+                macAddress.set("Remote");
+                connectionStatus.set("Connected");
+            });
+        } else {
+            // Local monitoring
+            List<String> interfaceNames = new ArrayList<>();
+
+            for (NetworkIF netIF : networkInterfaces) {
+                netIF.updateAttributes();
+                String name = netIF.getName() + " (" + netIF.getDisplayName() + ")";
+                interfaceNames.add(name);
+
+                // Initialize stats for this interface
+                if (!previousStats.containsKey(netIF.getName())) {
+                    previousStats.put(netIF.getName(), new NetworkStats(
+                            netIF.getBytesRecv(),
+                            netIF.getBytesSent(),
+                            System.currentTimeMillis()
+                    ));
+                }
+            }
+
+            Platform.runLater(() -> {
+                interfaceSelector.getItems().setAll(interfaceNames);
+                if (!interfaceNames.isEmpty()) {
+                    interfaceSelector.getSelectionModel().selectFirst();
+                    updateSelectedInterface(0);
+                }
+            });
+        }
     }
 
     private VBox createStatsBox() {
@@ -303,6 +320,15 @@ public class NetworkMonitor {
     }
 
     private void updateSelectedInterface(int index) {
+        if (remoteStation != null) {
+            // For remote monitoring, we don't have multiple interfaces
+            currentInterface.set("Remote");
+            ipAddress.set("Remote");
+            macAddress.set("Remote");
+            connectionStatus.set("Connected");
+            return;
+        }
+
         if (index < 0 || index >= networkInterfaces.size()) {
             return;
         }
@@ -333,77 +359,174 @@ public class NetworkMonitor {
     }
 
     private void updateNetworkInfo() {
-        if (currentNetworkIF == null) {
-            return;
-        }
+        if (remoteStation != null) {
+            // Remote monitoring mode
+            try {
+                String response = remoteStation.getNetworkUsage();
+                Platform.runLater(() -> {
+                    try {
+                        JSONObject json = new JSONObject(response);
+                        JSONArray interfaces = json.getJSONArray("interfaces");
 
-        // Update network interface
-        currentNetworkIF.updateAttributes();
+                        if (interfaces.length() > 0) {
+                            JSONObject netData = interfaces.getJSONObject(0);
 
-        // Check if interface is still connected
-        boolean isConnected = currentNetworkIF.getSpeed() > 0;
-        Platform.runLater(() -> connectionStatus.set(isConnected ? "Connected" : "Disconnected"));
+                            // Calculate speeds
+                            long bytesRecv = netData.getLong("bytes_recv");
+                            long bytesSent = netData.getLong("bytes_sent");
 
-        // Calculate speeds
-        String interfaceName = currentNetworkIF.getName();
-        NetworkStats prevStats = previousStats.get(interfaceName);
+                            String interfaceName = "Remote";
+                            NetworkStats prevStats = previousStats.get(interfaceName);
 
-        if (prevStats != null) {
-            long currentBytes = currentNetworkIF.getBytesRecv();
-            long currentSent = currentNetworkIF.getBytesSent();
-            long currentTime = System.currentTimeMillis();
+                            if (prevStats != null) {
+                                long currentTime = System.currentTimeMillis();
+                                long byteDiff = bytesRecv - prevStats.bytesReceived;
+                                long sentDiff = bytesSent - prevStats.bytesSent;
+                                double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
 
-            long byteDiff = currentBytes - prevStats.bytesReceived;
-            long sentDiff = currentSent - prevStats.bytesSent;
-            double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
+                                // Calculate speeds in KB/s
+                                double downloadRate = byteDiff / (1024.0 * timeSeconds);
+                                double uploadRate = sentDiff / (1024.0 * timeSeconds);
 
-            // Calculate speeds in KB/s
-            double downloadRate = byteDiff / (1024.0 * timeSeconds);
-            double uploadRate = sentDiff / (1024.0 * timeSeconds);
+                                // Update previous stats
+                                previousStats.put(interfaceName, new NetworkStats(
+                                        bytesRecv,
+                                        bytesSent,
+                                        currentTime
+                                ));
 
-            // Update previous stats
-            previousStats.put(interfaceName, new NetworkStats(
-                    currentBytes,
-                    currentSent,
-                    currentTime
-            ));
+                                // Update UI
+                                downloadSpeed.set(formatSpeed(downloadRate));
+                                uploadSpeed.set(formatSpeed(uploadRate));
 
-            // Update UI
-            Platform.runLater(() -> {
-                // Update speed labels
-                downloadSpeed.set(formatSpeed(downloadRate));
-                uploadSpeed.set(formatSpeed(uploadRate));
+                                // Update chart data
+                                downloadSeries.getData().add(new XYChart.Data<>(xSeriesData, downloadRate));
+                                uploadSeries.getData().add(new XYChart.Data<>(xSeriesData, uploadRate));
+                                xSeriesData++;
 
-                // Update chart data
-                downloadSeries.getData().add(new XYChart.Data<>(xSeriesData, downloadRate));
-                uploadSeries.getData().add(new XYChart.Data<>(xSeriesData, uploadRate));
-                xSeriesData++;
+                                // Remove old data points
+                                if (downloadSeries.getData().size() > MAX_DATA_POINTS) {
+                                    downloadSeries.getData().remove(0);
+                                    uploadSeries.getData().remove(0);
+                                }
+                            } else {
+                                // First reading - just store the stats
+                                previousStats.put(interfaceName, new NetworkStats(
+                                        bytesRecv,
+                                        bytesSent,
+                                        System.currentTimeMillis()
+                                ));
+                            }
 
-                // Remove old data points
-                if (downloadSeries.getData().size() > MAX_DATA_POINTS) {
-                    downloadSeries.getData().remove(0);
-                    uploadSeries.getData().remove(0);
-                }
+                            // Update total bytes
+                            totalDownloaded.set(formatBytes(bytesRecv));
+                            totalUploaded.set(formatBytes(bytesSent));
+                        }
+                    } catch (JSONException e) {
+                        System.err.println("Error parsing network API response: " + e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Error fetching remote network data: " + e.getMessage());
+            }
+        } else {
+            // Local monitoring mode
+            if (currentNetworkIF == null) {
+                return;
+            }
 
-                // Update total bytes
-                updateTotalBytes(currentNetworkIF);
-            });
+            // Update network interface
+            currentNetworkIF.updateAttributes();
+
+            // Check if interface is still connected
+            boolean isConnected = currentNetworkIF.getSpeed() > 0;
+            Platform.runLater(() -> connectionStatus.set(isConnected ? "Connected" : "Disconnected"));
+
+            // Calculate speeds
+            String interfaceName = currentNetworkIF.getName();
+            NetworkStats prevStats = previousStats.get(interfaceName);
+
+            if (prevStats != null) {
+                long currentBytes = currentNetworkIF.getBytesRecv();
+                long currentSent = currentNetworkIF.getBytesSent();
+                long currentTime = System.currentTimeMillis();
+
+                long byteDiff = currentBytes - prevStats.bytesReceived;
+                long sentDiff = currentSent - prevStats.bytesSent;
+                double timeSeconds = (currentTime - prevStats.timestamp) / 1000.0;
+
+                // Calculate speeds in KB/s
+                double downloadRate = byteDiff / (1024.0 * timeSeconds);
+                double uploadRate = sentDiff / (1024.0 * timeSeconds);
+
+                // Update previous stats
+                previousStats.put(interfaceName, new NetworkStats(
+                        currentBytes,
+                        currentSent,
+                        currentTime
+                ));
+
+                // Update UI
+                Platform.runLater(() -> {
+                    // Update speed labels
+                    downloadSpeed.set(formatSpeed(downloadRate));
+                    uploadSpeed.set(formatSpeed(uploadRate));
+
+                    // Update chart data
+                    downloadSeries.getData().add(new XYChart.Data<>(xSeriesData, downloadRate));
+                    uploadSeries.getData().add(new XYChart.Data<>(xSeriesData, uploadRate));
+                    xSeriesData++;
+
+                    // Remove old data points
+                    if (downloadSeries.getData().size() > MAX_DATA_POINTS) {
+                        downloadSeries.getData().removeFirst();
+                        uploadSeries.getData().removeFirst();
+                    }
+
+                    updateTotalBytes(currentNetworkIF);
+                });
+            }
         }
     }
 
     private void updateTotalBytes(NetworkIF netIF) {
+        if (remoteStation != null) {
+            return;
+        }
         totalDownloaded.set(formatBytes(netIF.getBytesRecv()));
         totalUploaded.set(formatBytes(netIF.getBytesSent()));
     }
 
     private void updateConnectionInfo() {
-        // In a real implementation, this would use OS-specific APIs to get connection info
-        // For demonstration purposes, we'll add some dummy data
         Platform.runLater(() -> {
             connectionData.clear();
 
-            if (currentNetworkIF != null && connectionStatus.get().equals("Connected")) {
-                // Add sample connections - in a real app, we would get this from netstat or similar
+            if (remoteStation != null) {
+                // Remote connection info
+                try {
+                    String response = remoteStation.getNetworkUsage();
+                    JSONObject json = new JSONObject(response);
+                    JSONArray connections = json.getJSONArray("connections");
+
+                    for (int i = 0; i < connections.length(); i++) {
+                        JSONObject conn = connections.getJSONObject(i);
+                        connectionData.add(new ConnectionEntry(
+                                conn.optString("laddr", "N/A"),
+                                conn.optString("raddr", "N/A"),
+                                conn.optString("type", "N/A"),
+                                conn.optString("status", "N/A")
+                        ));
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error fetching remote connection data: " + e.getMessage());
+                    connectionData.add(new ConnectionEntry(
+                            "Remote:443",
+                            "192.168.1.1:53",
+                            "TCP",
+                            "ESTABLISHED"
+                    ));
+                }
+            } else if (currentNetworkIF != null && connectionStatus.get().equals("Connected")) {
                 connectionData.add(new ConnectionEntry(
                         ipAddress.get() + ":443",
                         "192.168.1.1:53",
@@ -416,7 +539,6 @@ public class NetworkMonitor {
                         "TCP",
                         "TIME_WAIT"
                 ));
-                // In a real implementation, we'd add more actual connections here
             }
         });
     }
@@ -439,6 +561,11 @@ public class NetworkMonitor {
         } else {
             return df.format(bytes / (1024.0 * 1024 * 1024)) + " GB";
         }
+    }
+
+    public void setRemoteStation(RemoteStation remoteStation) {
+        this.remoteStation = remoteStation;
+        updateNetworkInterfaces();
     }
 
     public void shutdown() {

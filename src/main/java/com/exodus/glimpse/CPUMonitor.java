@@ -12,6 +12,9 @@ import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.HardwareAbstractionLayer;
@@ -29,6 +32,7 @@ public class CPUMonitor {
     private final HardwareAbstractionLayer hardware;
     private final OperatingSystem os;
     private final CentralProcessor processor;
+    private RemoteStation remoteStation;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final SimpleDoubleProperty cpuUsage = new SimpleDoubleProperty(0);
@@ -230,66 +234,132 @@ public class CPUMonitor {
     }
 
     private void updateCPUInfo() {
-        double usage = processor.getSystemCpuLoadBetweenTicks(previousTicks) * 100;
-        previousTicks = processor.getSystemCpuLoadTicks();
+        if (remoteStation != null) {
+            try {
+                String response = remoteStation.getCpuUsage();
+                Platform.runLater(() -> {
+                    try {
+                        JSONObject json = new JSONObject(response);
+                        double usage = json.getDouble("usage_percent");
 
-        // Get CPU frequency
-        long[] freqs = processor.getCurrentFreq();
-        long maxFreq = 0;
-        for (long freq : freqs) {
-            if (freq > maxFreq) {
-                maxFreq = freq;
+                        cpuUsage.set(usage);
+                        cpuSeries.getData().add(new XYChart.Data<>(xSeriesData++, usage));
+                        if (cpuSeries.getData().size() > MAX_DATA_POINTS) {
+                            cpuSeries.getData().remove(0);
+                        }
+
+                        double freq = json.optDouble("frequencies", 0);
+                        String freqStr = freq > 0 ? df.format(freq / 1000.0) + " GHz" : "N/A";
+                        cpuFrequency.set(freqStr);
+
+                        // For remote, we might not have these values
+                        numProcesses.set("Remote");
+                        numThreads.set("Remote");
+                        cpuTemp.set("N/A"); // Temperature usually not available remotely
+                    } catch (JSONException e) {
+                        System.err.println("Error parsing CPU API response: " + e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Error fetching remote CPU data: " + e.getMessage());
             }
+        } else {
+            double usage = processor.getSystemCpuLoadBetweenTicks(previousTicks) * 100;
+            previousTicks = processor.getSystemCpuLoadTicks();
+
+            long[] freqs = processor.getCurrentFreq();
+            long maxFreq = 0;
+            for (long freq : freqs) {
+                if (freq > maxFreq) {
+                    maxFreq = freq;
+                }
+            }
+            String freqStr = maxFreq > 0 ? df.format(maxFreq / 1_000_000.0) + " GHz" : "N/A";
+
+            double temp = hardware.getSensors().getCpuTemperature();
+            String tempStr = temp > 0 ? df.format(temp) + "°C" : "N/A";
+
+            Platform.runLater(() -> {
+                cpuUsage.set(usage);
+                cpuSeries.getData().add(new XYChart.Data<>(xSeriesData++, usage));
+                if (cpuSeries.getData().size() > MAX_DATA_POINTS) {
+                    cpuSeries.getData().remove(0);
+                }
+                cpuFrequency.set(freqStr);
+                numProcesses.set(String.valueOf(os.getProcessCount()));
+                numThreads.set(String.valueOf(os.getThreadCount()));
+                cpuTemp.set(tempStr);
+            });
         }
-        String freqStr = maxFreq > 0 ? df.format(maxFreq / 1_000_000.0) + " GHz" : "N/A";
-
-        // Get CPU temperature
-        double temp = hardware.getSensors().getCpuTemperature();
-        String tempStr = temp > 0 ? df.format(temp) + "°C" : "N/A";
-
-        Platform.runLater(() -> {
-            cpuUsage.set(usage);
-            cpuSeries.getData().add(new XYChart.Data<>(xSeriesData++, usage));
-            if (cpuSeries.getData().size() > MAX_DATA_POINTS) {
-                cpuSeries.getData().remove(0);
-            }
-            cpuFrequency.set(freqStr);
-            numProcesses.set(String.valueOf(os.getProcessCount()));
-            numThreads.set(String.valueOf(os.getThreadCount()));
-            cpuTemp.set(tempStr);
-        });
     }
 
     private void updateProcessInfo() {
-        List<OSProcess> processes = os.getProcesses();
-        processes.sort((p1, p2) -> {
-            double cpu1 = 100d * (p1.getKernelTime() + p1.getUserTime()) / p1.getUpTime();
-            double cpu2 = 100d * (p2.getKernelTime() + p2.getUserTime()) / p2.getUpTime();
-            return Double.compare(cpu2, cpu1);
-        });
+        if (remoteStation != null) {
+            // Remote process monitoring
+            try {
+                String response = remoteStation.getTopProcesses();
+                Platform.runLater(() -> {
+                    try {
+                        JSONArray processes = new JSONArray(response);
+                        processData.clear();
 
-        List<OSProcess> topProcesses = processes.subList(0, Math.min(10, processes.size()));
+                        for (int i = 0; i < processes.length(); i++) {
+                            JSONObject proc = processes.getJSONObject(i);
+                            String name = proc.getString("name");
+                            if (name.length() > 30) {
+                                name = name.substring(0, 27) + "...";
+                            }
 
-        Platform.runLater(() -> {
-            processData.clear();
-            for (OSProcess process : topProcesses) {
-                String name = process.getName();
-                if (name.length() > 30) {
-                    name = name.substring(0, 27) + "...";
-                }
+                            double cpuUsage = proc.getDouble("cpu_percent");
+                            double memPercent = proc.getDouble("memory_percent");
+                            long memBytes = (long) (memPercent * 0.01 * hardware.getMemory().getTotal());
 
-                double cpuUsage = 100d * (process.getKernelTime() + process.getUserTime()) / process.getUpTime();
-                long memBytes = process.getResidentSetSize();
-                String memoryUsage = formatBytes(memBytes);
-
-                processData.add(new ProcessInfo(
-                        name,
-                        String.valueOf(process.getProcessID()),
-                        df.format(cpuUsage) + "%",
-                        memoryUsage
-                ));
+                            processData.add(new ProcessInfo(
+                                    name,
+                                    String.valueOf(proc.getInt("pid")),
+                                    df.format(cpuUsage) + "%",
+                                    formatBytes(memBytes)
+                            ));
+                        }
+                    } catch (JSONException e) {
+                        System.err.println("Error parsing process API response: " + e.getMessage());
+                    }
+                });
+            } catch (Exception e) {
+                System.err.println("Error fetching remote process data: " + e.getMessage());
             }
-        });
+        } else {
+            // Local process monitoring (existing code)
+            List<OSProcess> processes = os.getProcesses();
+            processes.sort((p1, p2) -> {
+                double cpu1 = 100d * (p1.getKernelTime() + p1.getUserTime()) / p1.getUpTime();
+                double cpu2 = 100d * (p2.getKernelTime() + p2.getUserTime()) / p2.getUpTime();
+                return Double.compare(cpu2, cpu1);
+            });
+
+            List<OSProcess> topProcesses = processes.subList(0, Math.min(10, processes.size()));
+
+            Platform.runLater(() -> {
+                processData.clear();
+                for (OSProcess process : topProcesses) {
+                    String name = process.getName();
+                    if (name.length() > 30) {
+                        name = name.substring(0, 27) + "...";
+                    }
+
+                    double cpuUsage = 100d * (process.getKernelTime() + process.getUserTime()) / process.getUpTime();
+                    long memBytes = process.getResidentSetSize();
+                    String memoryUsage = formatBytes(memBytes);
+
+                    processData.add(new ProcessInfo(
+                            name,
+                            String.valueOf(process.getProcessID()),
+                            df.format(cpuUsage) + "%",
+                            memoryUsage
+                    ));
+                }
+            });
+        }
     }
 
     private String formatBytes(long bytes) {
@@ -302,6 +372,10 @@ public class CPUMonitor {
         } else {
             return df.format(bytes / (1024.0 * 1024 * 1024)) + " GB";
         }
+    }
+
+    public void setRemoteStation(RemoteStation remoteStation) {
+        this.remoteStation = remoteStation;
     }
 
     public void shutdown() {
