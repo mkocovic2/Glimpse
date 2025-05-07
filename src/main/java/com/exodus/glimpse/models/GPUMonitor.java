@@ -22,6 +22,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors GPU usage and processes.
+ */
 public class GPUMonitor extends BaseMonitor {
     private final List<GraphicsCard> graphicsCards;
 
@@ -40,6 +43,9 @@ public class GPUMonitor extends BaseMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+    /**
+     * Constructor that initializes GPU monitoring.
+     */
     public GPUMonitor() {
         super();
         graphicsCards = hardware.getGraphicsCards();
@@ -52,7 +58,11 @@ public class GPUMonitor extends BaseMonitor {
         startMonitoring();
     }
 
-    public VBox createGPUMonitorPanel() {
+    /**
+     * Creates the GPU monitoring panel with usage indicator, stats and process table.
+     * @return VBox containing the GPU monitor UI.
+     */
+    public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
         monitorPanel.setStyle("-fx-background-color: #282828;");

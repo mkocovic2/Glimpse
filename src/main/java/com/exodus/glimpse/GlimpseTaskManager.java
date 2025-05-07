@@ -24,6 +24,9 @@ import java.util.Optional;
 
 import java.net.URL;
 
+/**
+ * Main application class for the Glimpse task manager.
+ */
 public class GlimpseTaskManager extends Application {
     private final ObservableList<RemoteStation> remoteStations = FXCollections.observableArrayList();
     private final StringProperty selectedResource = new SimpleStringProperty("Hardware");
@@ -39,6 +42,10 @@ public class GlimpseTaskManager extends Application {
     private DiskMonitor diskMonitor;
     private GPUMonitor gpuMonitor;
 
+    /**
+     * Starts the JavaFX application and initializes the UI.
+     * @param primaryStage The primary stage for the application.
+     */
     @Override
     public void start(Stage primaryStage) {
         primaryStage.initStyle(StageStyle.UNDECORATED);
@@ -107,6 +114,11 @@ public class GlimpseTaskManager extends Application {
         primaryStage.show();
     }
 
+    /**
+     * Creates the title bar with window controls and drag functionality.
+     * @param stage The stage to control.
+     * @return HBox containing the title bar UI.
+     */
     private HBox createTitleBar(Stage stage) {
         HBox titleBar = new HBox();
         titleBar.setAlignment(Pos.CENTER_RIGHT);
@@ -189,6 +201,13 @@ public class GlimpseTaskManager extends Application {
         return titleBar;
     }
 
+    /**
+     * Creates a window control button (minimize, maximize, close).
+     * @param text The button text.
+     * @param hoverColor The color when hovered.
+     * @param action The action to perform on click.
+     * @return Button configured as a window control.
+     */
     private Button createWindowButton(String text, String hoverColor, EventHandler<ActionEvent> action) {
         Button button = new Button(text);
         button.setMinSize(30, 20);
@@ -205,6 +224,10 @@ public class GlimpseTaskManager extends Application {
         return button;
     }
 
+    /**
+     * Creates the left sidebar with device and resource navigation.
+     * @return VBox containing the sidebar UI.
+     */
     private VBox createLeftSidebar() {
         VBox sidebar = new VBox(10);
         sidebar.setPadding(new Insets(10));
@@ -260,6 +283,12 @@ public class GlimpseTaskManager extends Application {
         return sidebar;
     }
 
+    /**
+     * Creates a sidebar button with hover effects.
+     * @param text The button text.
+     * @param textColor The text color.
+     * @return Button configured for the sidebar.
+     */
     private Button createSidebarButton(String text, String textColor) {
         Button button = new Button(text);
         button.setMaxWidth(Double.MAX_VALUE);
@@ -272,6 +301,10 @@ public class GlimpseTaskManager extends Application {
         return button;
     }
 
+    /**
+     * Creates the center section with resource selection buttons.
+     * @return VBox containing the center UI.
+     */
     private VBox createCenterSection() {
         VBox centerSection = new VBox(5);
         centerSection.setPadding(new Insets(10));
@@ -304,6 +337,14 @@ public class GlimpseTaskManager extends Application {
         return centerSection;
     }
 
+    /**
+     * Creates a resource entry button with icon and labels.
+     * @param resource The resource name.
+     * @param process The process description.
+     * @param color The background color for the icon.
+     * @param icon The icon character.
+     * @return Button configured as a resource entry.
+     */
     private Button createResourceEntry(String resource, String process, Color color, String icon) {
         Button entry = new Button();
         entry.setMaxWidth(Double.MAX_VALUE);
@@ -336,6 +377,10 @@ public class GlimpseTaskManager extends Application {
         return entry;
     }
 
+    /**
+     * Sets up selection behavior for resource buttons.
+     * @param resourceButton The button to configure.
+     */
     private void setupResourceSelection(Button resourceButton) {
         resourceButton.setOnAction(e -> {
             Scene scene = resourceButton.getScene();
@@ -356,6 +401,9 @@ public class GlimpseTaskManager extends Application {
         });
     }
 
+    /**
+     * Updates the right panel based on the selected resource.
+     */
     private void updateRightPanel() {
         if (rightSection == null) return;
 
@@ -389,18 +437,19 @@ public class GlimpseTaskManager extends Application {
         Label titleLabel = new Label();
         titleLabel.setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 18px;");
 
+        // Where the functionality of the application is
         switch (selectedResource.get()) {
             case "Hardware":
-                contentBox.getChildren().add(hardwareMonitor.createHardwareMonitorPanel());
+                contentBox.getChildren().add(hardwareMonitor.createMonitorPanel());
                 break;
             case "Processes":
-                contentBox.getChildren().add(processMonitor.createProcessMonitorPanel());
+                contentBox.getChildren().add(processMonitor.createMonitorPanel());
                 break;
             case "CPU":
                 contentBox.getChildren().add(cpuMonitor.createMonitorPanel());
                 break;
             case "GPU":
-                contentBox.getChildren().add(gpuMonitor.createGPUMonitorPanel());
+                contentBox.getChildren().add(gpuMonitor.createMonitorPanel());
                 break;
             case "RAM":
                 contentBox.getChildren().add(ramMonitor.createMonitorPanel());
@@ -431,6 +480,10 @@ public class GlimpseTaskManager extends Application {
         rightSection.getChildren().add(scrollPane);
     }
 
+    /**
+     * Creates the right section for displaying detailed resource information.
+     * @return VBox containing the right section UI.
+     */
     private VBox createRightSection() {
         VBox rightSection = new VBox(15);
         rightSection.setPadding(new Insets(15));
@@ -473,6 +526,11 @@ public class GlimpseTaskManager extends Application {
         return rightSection;
     }
 
+    /**
+     * Converts a JavaFX Color to an RGB string.
+     * @param color The Color to convert.
+     * @return RGB string representation.
+     */
     private String toRGBCode(Color color) {
         return String.format("rgba(%d, %d, %d, %.1f)",
                 (int) (color.getRed() * 255),
@@ -481,8 +539,12 @@ public class GlimpseTaskManager extends Application {
                 color.getOpacity());
     }
 
+    /**
+     * Cleans up resources when the application stops.
+     */
     @Override
     public void stop() throws Exception {
+        // Stops the monitoring process when needed
         if (processMonitor != null) {
             processMonitor.shutdown();
         }

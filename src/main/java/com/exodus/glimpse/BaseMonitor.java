@@ -18,6 +18,9 @@ import java.text.DecimalFormat;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
+/**
+ * Abstract base class for monitoring system resources with common UI components and utilities.
+ */
 public abstract class BaseMonitor {
     protected final SystemInfo systemInfo;
     protected final HardwareAbstractionLayer hardware;
@@ -36,7 +39,12 @@ public abstract class BaseMonitor {
         this.os = systemInfo.getOperatingSystem();
     }
 
-    // Common UI components
+    /**
+     * Creates a circular indicator for displaying usage percentages with dynamic color changes.
+     * @param usageProperty The property binding to the usage value.
+     * @param labelText The label text to display below the indicator.
+     * @return StackPane containing the circular indicator.
+     */
     protected StackPane createCircularIndicator(SimpleDoubleProperty usageProperty, String labelText) {
         StackPane circleContainer = new StackPane();
         circleContainer.setMinSize(100, 100);
@@ -78,6 +86,12 @@ public abstract class BaseMonitor {
         return circleContainer;
     }
 
+    /**
+     * Creates a horizontal row for displaying a label and its corresponding value.
+     * @param labelText The label text.
+     * @param valueProperty The property binding to the value.
+     * @return HBox containing the label and value.
+     */
     protected HBox createStatRow(String labelText, SimpleStringProperty valueProperty) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -94,6 +108,13 @@ public abstract class BaseMonitor {
         return row;
     }
 
+    /**
+     * Creates a line chart for displaying usage data over time.
+     * @param title The title of the chart.
+     * @param yAxisLabel The label for the Y-axis.
+     * @param series The data series to display.
+     * @return LineChart configured with the provided data.
+     */
     protected LineChart<Number, Number> createUsageChart(String title, String yAxisLabel, XYChart.Series<Number, Number> series) {
         final NumberAxis xAxis = new NumberAxis();
         final NumberAxis yAxis = new NumberAxis(0, 100, 20);
@@ -124,6 +145,11 @@ public abstract class BaseMonitor {
         return lineChart;
     }
 
+    /**
+     * Formats bytes into a human-readable string (e.g., KB, MB, GB).
+     * @param bytes The number of bytes to format.
+     * @return Formatted string representation.
+     */
     protected String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
@@ -136,6 +162,11 @@ public abstract class BaseMonitor {
         }
     }
 
+    /**
+     * Formats network speed into a human-readable string (e.g., KB/s, MB/s).
+     * @param kbps The speed in kilobits per second.
+     * @return Formatted string representation.
+     */
     protected String formatSpeed(double kbps) {
         if (kbps < 1000) {
             return df.format(kbps) + " KB/s";
@@ -144,6 +175,11 @@ public abstract class BaseMonitor {
         }
     }
 
+    /**
+     * Creates a base panel for monitoring with a title.
+     * @param title The title of the panel.
+     * @return VBox configured as the base panel.
+     */
     protected VBox createBaseMonitorPanel(String title) {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
@@ -156,17 +192,31 @@ public abstract class BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Sets the remote station for monitoring.
+     * @param remoteStation The RemoteStation object to monitor.
+     */
     public void setRemoteStation(RemoteStation remoteStation) {
         this.remoteStation = remoteStation;
     }
 
+    /**
+     * Shuts down the monitoring scheduler.
+     */
     public void shutdown() {
         scheduler.shutdown();
     }
 
+    /**
+     * Creates the monitor panel (to be implemented by subclasses).
+     * @return VBox containing the monitor UI.
+     */
     public VBox createMonitorPanel() {
         return null;
     }
 
+    /**
+     * Starts monitoring (to be implemented by subclasses).
+     */
     protected abstract void startMonitoring();
 }

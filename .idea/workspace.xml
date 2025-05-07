@@ -6,13 +6,14 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfe30a2-1e76-4e4c-93f7-da1c66ce92f8" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/CPUMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/CPUMonitor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/DiskMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/DiskMonitor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/AddStationDialog.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/AddStationDialog.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/BaseMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/BaseMonitor.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/GlimpseTaskManager.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/GlimpseTaskManager.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/NetworkMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/NetworkMonitor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/ProcessMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/ProcessMonitor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/RAMMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/RAMMonitor.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/module-info.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/module-info.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/RemoteStation.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/RemoteStation.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/CPUMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/CPUMonitor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/DiskMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/DiskMonitor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/GPUMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/GPUMonitor.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/ProcessMonitor.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/com/exodus/glimpse/models/ProcessMonitor.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -9,6 +9,9 @@ public class AddStationDialog extends Dialog<RemoteStation> {
     private final TextField apiUrlField = new TextField();
     private final TextField apiKeyField = new TextField();
 
+    /**
+     * Constructor that initializes the dialog with input fields for remote station details.
+     */
     public AddStationDialog() {
         setTitle("Add Remote Station");
         setHeaderText("Enter remote station details");

@@ -13,12 +13,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import oshi.SystemInfo;
 import oshi.hardware.HWDiskStore;
-import oshi.hardware.HardwareAbstractionLayer;
 import oshi.software.os.FileSystem;
 import oshi.software.os.OSFileStore;
-import oshi.software.os.OperatingSystem;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -32,6 +29,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors disk usage and performance.
+ */
 public class DiskMonitor extends BaseMonitor {
     private final FileSystem fileSystem;
     private final ComboBox<String> diskSelector;
@@ -56,6 +56,9 @@ public class DiskMonitor extends BaseMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+    /**
+     * Constructor that initializes disk monitoring.
+     */
     public DiskMonitor() {
         super();
         fileSystem = os.getFileSystem();
@@ -70,6 +73,10 @@ public class DiskMonitor extends BaseMonitor {
         startMonitoring();
     }
 
+    /**
+     * Creates the disk monitoring panel with selector, usage stats and partition table.
+     * @return VBox containing the disk monitor UI.
+     */
     public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
@@ -104,6 +111,9 @@ public class DiskMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Updates the list of available disks.
+     */
     private void updateDiskList() {
         if (remoteStation != null) {
             // For remote monitoring, we'll just show a single "Remote" disk
@@ -153,6 +163,10 @@ public class DiskMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Creates a disk usage section with progress bar and stats.
+     * @return VBox containing disk usage information.
+     */
     private VBox createDiskUsageSection() {
         VBox usageSection = new VBox(15);
         usageSection.setPadding(new Insets(10));
@@ -287,6 +301,10 @@ public class DiskMonitor extends BaseMonitor {
         return usageSection;
     }
 
+    /**
+     * Creates a table showing disk partitions.
+     * @return TableView configured for partition display.
+     */
     private TableView<DiskPartition> createPartitionTable() {
         TableView<DiskPartition> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -324,6 +342,9 @@ public class DiskMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Starts monitoring disk usage and partitions.
+     */
     public void startMonitoring() {
         // Update data every second
         scheduler.scheduleAtFixedRate(() -> {
@@ -332,6 +353,10 @@ public class DiskMonitor extends BaseMonitor {
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Updates the selected disk information.
+     * @param index The index of the selected disk.
+     */
     private void updateSelectedDisk(int index) {
         if (remoteStation != null) {
             // For remote monitoring, we don't have multiple disks
@@ -369,6 +394,9 @@ public class DiskMonitor extends BaseMonitor {
         updateDiskSpaceInfo();
     }
 
+    /**
+     * Updates disk usage and performance information.
+     */
     private void updateDiskInfo() {
         if (remoteStation != null) {
             // Remote monitoring mode
@@ -522,6 +550,9 @@ public class DiskMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates disk space information for the selected disk.
+     */
     private void updateDiskSpaceInfo() {
         if (remoteStation != null) {
             // For remote monitoring, this is handled in updateDiskInfo()
@@ -541,6 +572,9 @@ public class DiskMonitor extends BaseMonitor {
         });
     }
 
+    /**
+     * Updates partition information for all disks.
+     */
     private void updatePartitionInfo() {
         if (remoteStation != null) {
             // Remote partition info
@@ -623,6 +657,10 @@ public class DiskMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Sets the remote station for monitoring.
+     * @param remoteStation The RemoteStation to monitor.
+     */
     public void setRemoteStation(RemoteStation remoteStation) {
         this.remoteStation = remoteStation;
         updateDiskList();

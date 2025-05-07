@@ -37,7 +37,7 @@ public class ProcessMonitor extends BaseMonitor {
         startMonitoring();
     }
 
-    public VBox createProcessMonitorPanel() {
+    public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(10);
         monitorPanel.setPadding(new Insets(10));
         monitorPanel.setStyle("-fx-background-color: #282828;");

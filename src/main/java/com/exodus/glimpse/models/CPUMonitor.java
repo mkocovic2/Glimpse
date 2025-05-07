@@ -21,6 +21,9 @@ import oshi.hardware.CentralProcessor;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors CPU usage and process information.
+ */
 public class CPUMonitor extends BaseMonitor {
     private final CentralProcessor processor;
     private long[] previousTicks;
@@ -33,6 +36,9 @@ public class CPUMonitor extends BaseMonitor {
     private final XYChart.Series<Number, Number> cpuSeries = new XYChart.Series<>();
     private final ObservableList<ProcessInfo> processData = FXCollections.observableArrayList();
 
+    /**
+     * Constructor that initializes CPU monitoring.
+     */
     public CPUMonitor() {
         super(); // Initialize BaseMonitor properties
         processor = hardware.getProcessor();
@@ -46,6 +52,10 @@ public class CPUMonitor extends BaseMonitor {
         startMonitoring();
     }
 
+    /**
+     * Creates the CPU monitoring panel with usage charts and process table.
+     * @return VBox containing the CPU monitor UI.
+     */
     @Override
     public VBox createMonitorPanel() {
         VBox monitorPanel = createBaseMonitorPanel("CPU Monitor");
@@ -77,6 +87,10 @@ public class CPUMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Creates a stats box displaying CPU frequency, processes, threads and temperature.
+     * @return VBox containing CPU statistics.
+     */
     private VBox createStatsBox() {
         VBox statsBox = new VBox(8);
         statsBox.setPadding(new Insets(5));
@@ -92,6 +106,10 @@ public class CPUMonitor extends BaseMonitor {
         return statsBox;
     }
 
+    /**
+     * Creates a table showing CPU-intensive processes.
+     * @return TableView configured for process display.
+     */
     private TableView<ProcessInfo> createProcessTable() {
         TableView<ProcessInfo> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -122,6 +140,9 @@ public class CPUMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Starts monitoring CPU usage and processes.
+     */
     @Override
     protected void startMonitoring() {
         // Update data every second
@@ -131,6 +152,9 @@ public class CPUMonitor extends BaseMonitor {
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Updates CPU usage information from local or remote source.
+     */
     private void updateCPUInfo() {
         if (remoteStation != null) {
             try {
@@ -191,6 +215,9 @@ public class CPUMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates process information from local or remote source.
+     */
     private void updateProcessInfo() {
         if (remoteStation != null) {
             // Remote process monitoring
@@ -227,7 +254,6 @@ public class CPUMonitor extends BaseMonitor {
                 System.err.println("Error fetching remote process data: " + e.getMessage());
             }
         } else {
-            // Local process monitoring
             List<oshi.software.os.OSProcess> processes = os.getProcesses();
             processes.sort((p1, p2) -> {
                 double cpu1 = 100d * (p1.getKernelTime() + p1.getUserTime()) / p1.getUpTime();
@@ -260,7 +286,10 @@ public class CPUMonitor extends BaseMonitor {
         }
     }
 
-    // Keep the setRemoteStation method override
+    /**
+     * Sets the remote station for monitoring.
+     * @param remoteStation The RemoteStation to monitor.
+     */
     @Override
     public void setRemoteStation(RemoteStation remoteStation) {
         super.setRemoteStation(remoteStation);
