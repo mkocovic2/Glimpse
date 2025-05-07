@@ -15,4 +15,6 @@ module com.exodus.glimpse {
 
     opens com.exodus.glimpse to javafx.fxml;
     exports com.exodus.glimpse;
+    exports com.exodus.glimpse.models;
+    opens com.exodus.glimpse.models to javafx.fxml;
 }

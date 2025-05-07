@@ -1,5 +1,7 @@
-package com.exodus.glimpse;
+package com.exodus.glimpse.models;
 
+import com.exodus.glimpse.BaseMonitor;
+import com.exodus.glimpse.RemoteStation;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
@@ -8,9 +10,7 @@ import javafx.geometry.Insets;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
-import oshi.SystemInfo;
 import oshi.software.os.OSProcess;
-import oshi.software.os.OperatingSystem;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
@@ -24,9 +24,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class ProcessMonitor {
-    private final SystemInfo systemInfo;
-    private final OperatingSystem os;
+public class ProcessMonitor extends BaseMonitor {
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final ObservableList<ProcessInfo> processData = FXCollections.observableArrayList();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
@@ -35,8 +33,7 @@ public class ProcessMonitor {
     private boolean showAllProcesses = false;
 
     public ProcessMonitor() {
-        systemInfo = new SystemInfo();
-        os = systemInfo.getOperatingSystem();
+        super();
         startMonitoring();
     }
 
@@ -225,7 +222,7 @@ public class ProcessMonitor {
         return statusBar;
     }
 
-    private void startMonitoring() {
+    protected void startMonitoring() {
         scheduler.scheduleAtFixedRate(this::updateProcessInfo, 0, 2, TimeUnit.SECONDS);
     }
 
@@ -352,7 +349,7 @@ public class ProcessMonitor {
         alert.showAndWait();
     }
 
-    private String formatBytes(long bytes) {
+    protected String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
         } else if (bytes < 1024 * 1024) {

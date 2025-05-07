@@ -1,5 +1,7 @@
-package com.exodus.glimpse;
+package com.exodus.glimpse.models;
 
+import com.exodus.glimpse.BaseMonitor;
+import com.exodus.glimpse.RemoteStation;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -30,13 +32,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class DiskMonitor {
-    private final SystemInfo systemInfo;
-    private final HardwareAbstractionLayer hardware;
-    private final OperatingSystem os;
+public class DiskMonitor extends BaseMonitor {
     private final FileSystem fileSystem;
     private final ComboBox<String> diskSelector;
-    private RemoteStation remoteStation;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final SimpleStringProperty currentDisk = new SimpleStringProperty("N/A");
@@ -59,9 +57,7 @@ public class DiskMonitor {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public DiskMonitor() {
-        systemInfo = new SystemInfo();
-        hardware = systemInfo.getHardware();
-        os = systemInfo.getOperatingSystem();
+        super();
         fileSystem = os.getFileSystem();
 
         // Initialize disk selector
@@ -74,7 +70,7 @@ public class DiskMonitor {
         startMonitoring();
     }
 
-    public VBox createDiskMonitorPanel() {
+    public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
         monitorPanel.setStyle("-fx-background-color: #282828;");
@@ -328,7 +324,7 @@ public class DiskMonitor {
         return table;
     }
 
-    private void startMonitoring() {
+    public void startMonitoring() {
         // Update data every second
         scheduler.scheduleAtFixedRate(() -> {
             updateDiskInfo();
@@ -607,7 +603,7 @@ public class DiskMonitor {
         }
     }
 
-    private String formatSpeed(double kbps) {
+    protected String formatSpeed(double kbps) {
         if (kbps < 1000) {
             return df.format(kbps) + " KB/s";
         } else {
@@ -615,7 +611,7 @@ public class DiskMonitor {
         }
     }
 
-    private String formatBytes(long bytes) {
+    protected String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
         } else if (bytes < 1024 * 1024) {

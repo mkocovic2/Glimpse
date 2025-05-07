@@ -1,5 +1,7 @@
-package com.exodus.glimpse;
+package com.exodus.glimpse.models;
 
+import com.exodus.glimpse.BaseMonitor;
+import com.exodus.glimpse.RemoteStation;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleStringProperty;
@@ -15,11 +17,8 @@ import javafx.scene.layout.*;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import oshi.SystemInfo;
-import oshi.hardware.CentralProcessor;
-import oshi.hardware.HardwareAbstractionLayer;
+import oshi.hardware.GlobalMemory;
 import oshi.software.os.OSProcess;
-import oshi.software.os.OperatingSystem;
 
 import java.text.DecimalFormat;
 import java.util.List;
@@ -27,78 +26,68 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class CPUMonitor {
-    private final SystemInfo systemInfo;
-    private final HardwareAbstractionLayer hardware;
-    private final OperatingSystem os;
-    private final CentralProcessor processor;
-    private RemoteStation remoteStation;
+public class RAMMonitor extends BaseMonitor {
+    private final GlobalMemory memory;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
-    private final SimpleDoubleProperty cpuUsage = new SimpleDoubleProperty(0);
-    private final SimpleStringProperty cpuFrequency = new SimpleStringProperty("N/A");
-    private final SimpleStringProperty numProcesses = new SimpleStringProperty("N/A");
-    private final SimpleStringProperty numThreads = new SimpleStringProperty("N/A");
-    private final SimpleStringProperty cpuTemp = new SimpleStringProperty("N/A");
-    private final XYChart.Series<Number, Number> cpuSeries = new XYChart.Series<>();
+    private final SimpleDoubleProperty ramUsagePercent = new SimpleDoubleProperty(0);
+    private final SimpleStringProperty totalRam = new SimpleStringProperty("N/A");
+    private final SimpleStringProperty usedRam = new SimpleStringProperty("N/A");
+    private final SimpleStringProperty freeRam = new SimpleStringProperty("N/A");
+    private final SimpleStringProperty swapTotal = new SimpleStringProperty("N/A");
+    private final SimpleStringProperty swapUsed = new SimpleStringProperty("N/A");
+    private final XYChart.Series<Number, Number> ramSeries = new XYChart.Series<>();
     private final ObservableList<ProcessInfo> processData = FXCollections.observableArrayList();
 
     private final int MAX_DATA_POINTS = 60;
     private int xSeriesData = 0;
-    private long[] previousTicks;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    public CPUMonitor() {
-        systemInfo = new SystemInfo();
-        hardware = systemInfo.getHardware();
-        os = systemInfo.getOperatingSystem();
-        processor = hardware.getProcessor();
-        previousTicks = processor.getSystemCpuLoadTicks();
-        cpuSeries.setName("CPU Usage %");
+    public RAMMonitor() {
+        super();
+        memory = hardware.getMemory();
+        ramSeries.setName("RAM Usage %");
 
-        // Initial process data load
         updateProcessInfo();
-
-        // Start monitoring
         startMonitoring();
     }
 
-    public VBox createCPUMonitorPanel() {
+    public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
         monitorPanel.setStyle("-fx-background-color: #282828;");
 
-        // CPU Usage Gauge and Stats
+        // RAM Usage Gauge and Stats
         HBox statsContainer = new HBox(20);
         statsContainer.setAlignment(Pos.CENTER);
         statsContainer.setPadding(new Insets(5, 0, 15, 0));
 
-        // CPU Usage Circle Indicator
+        // RAM Usage Circle Indicator
         VBox usageBox = new VBox(5);
         usageBox.setAlignment(Pos.CENTER);
 
         StackPane usageIndicator = createCircularIndicator();
-        Label usageLabel = new Label("CPU Usage");
+        Label usageLabel = new Label("RAM Usage");
         usageLabel.setStyle("-fx-text-fill: #BBBBBB; -fx-font-size: 12px;");
 
         usageBox.getChildren().addAll(usageIndicator, usageLabel);
 
-        // CPU Stats VBox
+        // RAM Stats VBox
         VBox statsBox = createStatsBox();
 
         statsContainer.getChildren().addAll(usageBox, statsBox);
 
-        // CPU Usage Graph
-        LineChart<Number, Number> cpuChart = createCPUChart();
-        VBox.setVgrow(cpuChart, Priority.ALWAYS);
+        // RAM Usage Graph
+        LineChart<Number, Number> ramChart = createRAMChart();
+        VBox.setVgrow(ramChart, Priority.ALWAYS);
 
         // Process Table
         TableView<ProcessInfo> processTable = createProcessTable();
         VBox.setVgrow(processTable, Priority.ALWAYS);
 
         // Add all components to main container
-        monitorPanel.getChildren().addAll(statsContainer, cpuChart, processTable);
+        monitorPanel.getChildren().addAll(statsContainer, ramChart, processTable);
 
         return monitorPanel;
     }
@@ -114,11 +103,10 @@ public class CPUMonitor {
         Label percentLabel = new Label("0%");
         percentLabel.setStyle("-fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold;");
 
-        cpuUsage.addListener((obs, oldVal, newVal) -> {
+        ramUsagePercent.addListener((obs, oldVal, newVal) -> {
             Platform.runLater(() -> {
                 percentLabel.setText(df.format(newVal.doubleValue()) + "%");
 
-                // Change color based on CPU usage
                 String color;
                 if (newVal.doubleValue() < 60) {
                     color = "#3D5AFE"; // Blue for normal
@@ -140,16 +128,17 @@ public class CPUMonitor {
         statsBox.setPadding(new Insets(5));
         statsBox.setAlignment(Pos.CENTER_LEFT);
 
-        HBox freqBox = createStatRow("Frequency:", cpuFrequency);
-        HBox processBox = createStatRow("Processes:", numProcesses);
-        HBox threadBox = createStatRow("Threads:", numThreads);
-        HBox tempBox = createStatRow("Temperature:", cpuTemp);
+        HBox totalBox = createStatRow("Total RAM:", totalRam);
+        HBox usedBox = createStatRow("Used RAM:", usedRam);
+        HBox freeBox = createStatRow("Free RAM:", freeRam);
+        HBox swapTotalBox = createStatRow("Swap Total:", swapTotal);
+        HBox swapUsedBox = createStatRow("Swap Used:", swapUsed);
 
-        statsBox.getChildren().addAll(freqBox, processBox, threadBox, tempBox);
+        statsBox.getChildren().addAll(totalBox, usedBox, freeBox, swapTotalBox, swapUsedBox);
         return statsBox;
     }
 
-    private HBox createStatRow(String labelText, SimpleStringProperty valueProperty) {
+    public HBox createStatRow(String labelText, SimpleStringProperty valueProperty) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
 
@@ -165,7 +154,7 @@ public class CPUMonitor {
         return row;
     }
 
-    private LineChart<Number, Number> createCPUChart() {
+    private LineChart<Number, Number> createRAMChart() {
         final NumberAxis xAxis = new NumberAxis();
         final NumberAxis yAxis = new NumberAxis(0, 100, 20);
 
@@ -179,10 +168,10 @@ public class CPUMonitor {
         yAxis.setAnimated(false);
 
         final LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
-        lineChart.setTitle("CPU Usage");
+        lineChart.setTitle("RAM Usage");
         lineChart.setCreateSymbols(false);
         lineChart.setAnimated(false);
-        lineChart.getData().add(cpuSeries);
+        lineChart.getData().add(ramSeries);
 
         lineChart.setStyle(
                 "-fx-background-color: #323232; " +
@@ -207,88 +196,83 @@ public class CPUMonitor {
         pidCol.setCellValueFactory(data -> data.getValue().pidProperty());
         pidCol.setPrefWidth(70);
 
-        TableColumn<ProcessInfo, String> cpuCol = new TableColumn<>("CPU %");
-        cpuCol.setCellValueFactory(data -> data.getValue().cpuUsageProperty());
-        cpuCol.setPrefWidth(80);
-
         TableColumn<ProcessInfo, String> memoryCol = new TableColumn<>("Memory");
         memoryCol.setCellValueFactory(data -> data.getValue().memoryUsageProperty());
         memoryCol.setPrefWidth(100);
 
-        table.getColumns().addAll(nameCol, pidCol, cpuCol, memoryCol);
+        TableColumn<ProcessInfo, String> memoryPercentCol = new TableColumn<>("RAM %");
+        memoryPercentCol.setCellValueFactory(data -> data.getValue().memoryPercentProperty());
+        memoryPercentCol.setPrefWidth(80);
+
+        table.getColumns().addAll(nameCol, pidCol, memoryCol, memoryPercentCol);
         table.setItems(processData);
 
-        // Style the table
         table.setFixedCellSize(30);
         table.setPrefHeight(180);
 
         return table;
     }
 
-    private void startMonitoring() {
-        // Update data every second
+    public void startMonitoring() {
         scheduler.scheduleAtFixedRate(() -> {
-            updateCPUInfo();
+            updateRAMInfo();
             updateProcessInfo();
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
-    private void updateCPUInfo() {
+    private void updateRAMInfo() {
         if (remoteStation != null) {
             try {
-                String response = remoteStation.getCpuUsage();
+                String response = remoteStation.getMemoryUsage();
                 Platform.runLater(() -> {
                     try {
                         JSONObject json = new JSONObject(response);
-                        double usage = json.getDouble("usage_percent");
+                        double usedPercent = json.getDouble("percent");
+                        long totalBytes = json.getLong("total");
+                        long usedBytes = json.getLong("used");
+                        long freeBytes = json.getLong("free");
+                        long swapTotalBytes = json.getLong("swap_total");
+                        long swapUsedBytes = json.getLong("swap_used");
 
-                        cpuUsage.set(usage);
-                        cpuSeries.getData().add(new XYChart.Data<>(xSeriesData++, usage));
-                        if (cpuSeries.getData().size() > MAX_DATA_POINTS) {
-                            cpuSeries.getData().remove(0);
+                        ramUsagePercent.set(usedPercent);
+                        ramSeries.getData().add(new XYChart.Data<>(xSeriesData++, usedPercent));
+                        if (ramSeries.getData().size() > MAX_DATA_POINTS) {
+                            ramSeries.getData().remove(0);
                         }
 
-                        double freq = json.optDouble("frequencies", 0);
-                        String freqStr = freq > 0 ? df.format(freq / 1000.0) + " GHz" : "N/A";
-                        cpuFrequency.set(freqStr);
-
-                        // For remote, we might not have these values
-                        numProcesses.set("Remote");
-                        numThreads.set("Remote");
-                        cpuTemp.set("N/A"); // Temperature usually not available remotely
+                        totalRam.set(formatBytes(totalBytes));
+                        usedRam.set(formatBytes(usedBytes));
+                        freeRam.set(formatBytes(freeBytes));
+                        swapTotal.set(formatBytes(swapTotalBytes));
+                        swapUsed.set(formatBytes(swapUsedBytes));
                     } catch (JSONException e) {
-                        System.err.println("Error parsing CPU API response: " + e.getMessage());
+                        System.err.println("Error parsing RAM API response: " + e.getMessage());
                     }
                 });
             } catch (Exception e) {
-                System.err.println("Error fetching remote CPU data: " + e.getMessage());
+                System.err.println("Error fetching remote RAM data: " + e.getMessage());
             }
         } else {
-            double usage = processor.getSystemCpuLoadBetweenTicks(previousTicks) * 100;
-            previousTicks = processor.getSystemCpuLoadTicks();
+            long total = memory.getTotal();
+            long available = memory.getAvailable();
+            long used = total - available;
+            double percentUsed = (double) used / total * 100;
 
-            long[] freqs = processor.getCurrentFreq();
-            long maxFreq = 0;
-            for (long freq : freqs) {
-                if (freq > maxFreq) {
-                    maxFreq = freq;
-                }
-            }
-            String freqStr = maxFreq > 0 ? df.format(maxFreq / 1_000_000.0) + " GHz" : "N/A";
-
-            double temp = hardware.getSensors().getCpuTemperature();
-            String tempStr = temp > 0 ? df.format(temp) + "°C" : "N/A";
+            long swapTotal = memory.getVirtualMemory().getSwapTotal();
+            long swapUsed = memory.getVirtualMemory().getSwapUsed();
 
             Platform.runLater(() -> {
-                cpuUsage.set(usage);
-                cpuSeries.getData().add(new XYChart.Data<>(xSeriesData++, usage));
-                if (cpuSeries.getData().size() > MAX_DATA_POINTS) {
-                    cpuSeries.getData().remove(0);
+                ramUsagePercent.set(percentUsed);
+                ramSeries.getData().add(new XYChart.Data<>(xSeriesData++, percentUsed));
+                if (ramSeries.getData().size() > MAX_DATA_POINTS) {
+                    ramSeries.getData().remove(0);
                 }
-                cpuFrequency.set(freqStr);
-                numProcesses.set(String.valueOf(os.getProcessCount()));
-                numThreads.set(String.valueOf(os.getThreadCount()));
-                cpuTemp.set(tempStr);
+
+                this.totalRam.set(formatBytes(total));
+                this.usedRam.set(formatBytes(used));
+                this.freeRam.set(formatBytes(available));
+                this.swapTotal.set(formatBytes(swapTotal));
+                this.swapUsed.set(formatBytes(swapUsed));
             });
         }
     }
@@ -303,6 +287,15 @@ public class CPUMonitor {
                         JSONArray processes = new JSONArray(response);
                         processData.clear();
 
+                        long totalMemory = 0;
+                        try {
+                            JSONObject memInfo = new JSONObject(remoteStation.getMemoryUsage());
+                            totalMemory = memInfo.getLong("total");
+                        } catch (Exception e) {
+                            System.err.println("Error getting total memory for remote: " + e.getMessage());
+                            totalMemory = 1; // Avoid division by zero
+                        }
+
                         for (int i = 0; i < processes.length(); i++) {
                             JSONObject proc = processes.getJSONObject(i);
                             String name = proc.getString("name");
@@ -310,15 +303,15 @@ public class CPUMonitor {
                                 name = name.substring(0, 27) + "...";
                             }
 
-                            double cpuUsage = proc.getDouble("cpu_percent");
-                            double memPercent = proc.getDouble("memory_percent");
-                            long memBytes = (long) (memPercent * 0.01 * hardware.getMemory().getTotal());
+                            long memBytes = (long)(proc.getDouble("memory_percent") * 0.01 * totalMemory);
+                            String memoryUsage = formatBytes(memBytes);
+                            double memoryPercent = proc.getDouble("memory_percent");
 
                             processData.add(new ProcessInfo(
                                     name,
                                     String.valueOf(proc.getInt("pid")),
-                                    df.format(cpuUsage) + "%",
-                                    formatBytes(memBytes)
+                                    memoryUsage,
+                                    df.format(memoryPercent) + "%"
                             ));
                         }
                     } catch (JSONException e) {
@@ -329,40 +322,37 @@ public class CPUMonitor {
                 System.err.println("Error fetching remote process data: " + e.getMessage());
             }
         } else {
-            // Local process monitoring (existing code)
             List<OSProcess> processes = os.getProcesses();
-            processes.sort((p1, p2) -> {
-                double cpu1 = 100d * (p1.getKernelTime() + p1.getUserTime()) / p1.getUpTime();
-                double cpu2 = 100d * (p2.getKernelTime() + p2.getUserTime()) / p2.getUpTime();
-                return Double.compare(cpu2, cpu1);
-            });
+            processes.sort((p1, p2) -> Long.compare(p2.getResidentSetSize(), p1.getResidentSetSize()));
 
             List<OSProcess> topProcesses = processes.subList(0, Math.min(10, processes.size()));
 
             Platform.runLater(() -> {
                 processData.clear();
+                long totalMemory = memory.getTotal();
+
                 for (OSProcess process : topProcesses) {
                     String name = process.getName();
                     if (name.length() > 30) {
                         name = name.substring(0, 27) + "...";
                     }
 
-                    double cpuUsage = 100d * (process.getKernelTime() + process.getUserTime()) / process.getUpTime();
                     long memBytes = process.getResidentSetSize();
                     String memoryUsage = formatBytes(memBytes);
+                    double memoryPercent = (double) memBytes / totalMemory * 100;
 
                     processData.add(new ProcessInfo(
                             name,
                             String.valueOf(process.getProcessID()),
-                            df.format(cpuUsage) + "%",
-                            memoryUsage
+                            memoryUsage,
+                            df.format(memoryPercent) + "%"
                     ));
                 }
             });
         }
     }
 
-    private String formatBytes(long bytes) {
+    public String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
         } else if (bytes < 1024 * 1024) {
@@ -385,24 +375,24 @@ public class CPUMonitor {
     public static class ProcessInfo {
         private final SimpleStringProperty name;
         private final SimpleStringProperty pid;
-        private final SimpleStringProperty cpuUsage;
         private final SimpleStringProperty memoryUsage;
+        private final SimpleStringProperty memoryPercent;
 
-        public ProcessInfo(String name, String pid, String cpuUsage, String memoryUsage) {
+        public ProcessInfo(String name, String pid, String memoryUsage, String memoryPercent) {
             this.name = new SimpleStringProperty(name);
             this.pid = new SimpleStringProperty(pid);
-            this.cpuUsage = new SimpleStringProperty(cpuUsage);
             this.memoryUsage = new SimpleStringProperty(memoryUsage);
+            this.memoryPercent = new SimpleStringProperty(memoryPercent);
         }
 
         public String getName() { return name.get(); }
         public String getPid() { return pid.get(); }
-        public String getCpuUsage() { return cpuUsage.get(); }
         public String getMemoryUsage() { return memoryUsage.get(); }
+        public String getMemoryPercent() { return memoryPercent.get(); }
 
         public SimpleStringProperty nameProperty() { return name; }
         public SimpleStringProperty pidProperty() { return pid; }
-        public SimpleStringProperty cpuUsageProperty() { return cpuUsage; }
         public SimpleStringProperty memoryUsageProperty() { return memoryUsage; }
+        public SimpleStringProperty memoryPercentProperty() { return memoryPercent; }
     }
 }

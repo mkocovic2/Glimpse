@@ -1,5 +1,6 @@
 package com.exodus.glimpse;
 
+import com.exodus.glimpse.models.*;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -30,11 +31,13 @@ public class GlimpseTaskManager extends Application {
     private double yOffset = 0;
     private VBox rightSection;
 
+    private HardwareMonitor hardwareMonitor;
     private ProcessMonitor processMonitor;
     private CPUMonitor cpuMonitor;
     private RAMMonitor ramMonitor;
     private NetworkMonitor networkMonitor;
     private DiskMonitor diskMonitor;
+    private GPUMonitor gpuMonitor;
 
     @Override
     public void start(Stage primaryStage) {
@@ -57,14 +60,20 @@ public class GlimpseTaskManager extends Application {
         contentSplitPane.setStyle("-fx-background-color: transparent; -fx-box-border: transparent;");
 
         // Initialize monitors
+        hardwareMonitor = new HardwareMonitor();
         processMonitor = new ProcessMonitor();
         cpuMonitor = new CPUMonitor();
         ramMonitor = new RAMMonitor();
         networkMonitor = new NetworkMonitor();
         diskMonitor = new DiskMonitor();
+        gpuMonitor = new GPUMonitor();
+
+        selectedResource.set("Hardware");
 
         VBox centerSection = createCenterSection();
         rightSection = createRightSection();
+
+        updateRightPanel();
 
         // Add content to split panes
         contentSplitPane.getItems().addAll(centerSection, rightSection);
@@ -209,12 +218,10 @@ public class GlimpseTaskManager extends Application {
         searchField.setStyle("-fx-background-color: #3D3D3D; -fx-text-fill: white; -fx-prompt-text-fill: #888888;");
         searchBox.getChildren().add(searchField);
 
-        Button favoritesBtn = createSidebarButton("★ Favorites", "#FFD700");
         Label typesHeader = new Label("Devices");
         typesHeader.setStyle("-fx-text-fill: #888888; -fx-font-size: 12px;");
         typesHeader.setPadding(new Insets(10, 0, 5, 0));
 
-        Button loginBtn = createSidebarButton("💻 Current Device", "white");
         Button addStationBtn = createSidebarButton("+ Add Remote Station", "#888888");
         addStationBtn.setDisable(false);
 
@@ -249,7 +256,7 @@ public class GlimpseTaskManager extends Application {
             updateRightPanel();
         });
 
-        sidebar.getChildren().addAll(searchBox, favoritesBtn, typesHeader, loginBtn, localMonitorBtn, addStationBtn);
+        sidebar.getChildren().addAll(typesHeader, localMonitorBtn, addStationBtn);
         return sidebar;
     }
 
@@ -270,13 +277,6 @@ public class GlimpseTaskManager extends Application {
         centerSection.setPadding(new Insets(10));
         centerSection.setStyle("-fx-background-color: #2D2D2D;");
 
-        HBox searchBox = new HBox();
-        TextField searchField = new TextField();
-        searchField.setPromptText("Search Resources");
-        searchField.setPrefWidth(220);
-        searchField.setStyle("-fx-background-color: #3D3D3D; -fx-text-fill: white; -fx-prompt-text-fill: #888888;");
-        searchBox.getChildren().add(searchField);
-
         VBox entriesBox = new VBox(1);
 
         Button summaryEntry = createResourceEntry("Hardware", "Device Name", new Color(0.42, 0.6, 0.85, 1), "\uD83D\uDD0C");
@@ -287,7 +287,8 @@ public class GlimpseTaskManager extends Application {
         Button networkEntry = createResourceEntry("Network", "Current Process", new Color(0.8, 0.2, 0.2, 1), "📡");
         Button diskEntry = createResourceEntry("Disk", "Current Process", new Color(0.8, 0.2, 0.2, 1), "\uD83D\uDCBF");
 
-        summaryEntry.setStyle(summaryEntry.getStyle() + "-fx-background-color: #3D5AFE; -fx-background-radius: 5;");
+        // Highlight the Hardware button by default
+        summaryEntry.setStyle("-fx-background-color: #3D5AFE; -fx-background-radius: 5;");
 
         setupResourceSelection(processEntry);
         setupResourceSelection(summaryEntry);
@@ -390,23 +391,25 @@ public class GlimpseTaskManager extends Application {
 
         switch (selectedResource.get()) {
             case "Hardware":
+                contentBox.getChildren().add(hardwareMonitor.createHardwareMonitorPanel());
                 break;
             case "Processes":
                 contentBox.getChildren().add(processMonitor.createProcessMonitorPanel());
                 break;
             case "CPU":
-                contentBox.getChildren().add(cpuMonitor.createCPUMonitorPanel());
+                contentBox.getChildren().add(cpuMonitor.createMonitorPanel());
                 break;
             case "GPU":
+                contentBox.getChildren().add(gpuMonitor.createGPUMonitorPanel());
                 break;
             case "RAM":
-                contentBox.getChildren().add(ramMonitor.createRAMMonitorPanel());
+                contentBox.getChildren().add(ramMonitor.createMonitorPanel());
                 break;
             case "Network":
-                contentBox.getChildren().add(networkMonitor.createNetworkMonitorPanel());
+                contentBox.getChildren().add(networkMonitor.createMonitorPanel());
                 break;
             case "Disk":
-                contentBox.getChildren().add(diskMonitor.createDiskMonitorPanel());
+                contentBox.getChildren().add(diskMonitor.createMonitorPanel());
                 break;
             default:
                 iconPane.setStyle("-fx-background-color: #4285F4; " + iconPane.getStyle());
@@ -480,12 +483,14 @@ public class GlimpseTaskManager extends Application {
 
     @Override
     public void stop() throws Exception {
-        // Shutdown all monitors
         if (processMonitor != null) {
             processMonitor.shutdown();
         }
         if (cpuMonitor != null) {
             cpuMonitor.shutdown();
+        }
+        if (gpuMonitor != null) {
+            gpuMonitor.shutdown();
         }
         if (ramMonitor != null) {
             ramMonitor.shutdown();

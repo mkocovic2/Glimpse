@@ -1,5 +1,7 @@
-package com.exodus.glimpse;
+package com.exodus.glimpse.models;
 
+import com.exodus.glimpse.BaseMonitor;
+import com.exodus.glimpse.RemoteStation;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -13,8 +15,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import oshi.SystemInfo;
-import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,12 +29,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class NetworkMonitor {
-    private final SystemInfo systemInfo;
-    private final HardwareAbstractionLayer hardware;
+public class NetworkMonitor extends BaseMonitor {
     private final List<NetworkIF> networkInterfaces;
     private final ComboBox<String> interfaceSelector;
-    private RemoteStation remoteStation;
 
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final SimpleStringProperty currentInterface = new SimpleStringProperty("N/A");
@@ -60,30 +57,24 @@ public class NetworkMonitor {
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public NetworkMonitor() {
-        systemInfo = new SystemInfo();
-        hardware = systemInfo.getHardware();
+        super();
         networkInterfaces = hardware.getNetworkIFs();
 
-        // Initialize interface selector
         interfaceSelector = new ComboBox<>();
 
-        // Update interfaces list
         updateNetworkInterfaces();
 
-        // Set up data series
         downloadSeries.setName("Download");
         uploadSeries.setName("Upload");
 
-        // Start monitoring
         startMonitoring();
     }
 
-    public VBox createNetworkMonitorPanel() {
+    public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
         monitorPanel.setStyle("-fx-background-color: #282828;");
 
-        // Interface selector and status
         HBox topPanel = new HBox(20);
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPadding(new Insets(5, 0, 15, 0));
@@ -311,7 +302,7 @@ public class NetworkMonitor {
         return table;
     }
 
-    private void startMonitoring() {
+    public void startMonitoring() {
         // Update data every second
         scheduler.scheduleAtFixedRate(() -> {
             updateNetworkInfo();
@@ -360,7 +351,6 @@ public class NetworkMonitor {
 
     private void updateNetworkInfo() {
         if (remoteStation != null) {
-            // Remote monitoring mode
             try {
                 String response = remoteStation.getNetworkUsage();
                 Platform.runLater(() -> {
@@ -368,7 +358,7 @@ public class NetworkMonitor {
                         JSONObject json = new JSONObject(response);
                         JSONArray interfaces = json.getJSONArray("interfaces");
 
-                        if (interfaces.length() > 0) {
+                        if (!interfaces.isEmpty()) {
                             JSONObject netData = interfaces.getJSONObject(0);
 
                             // Calculate speeds
@@ -543,7 +533,7 @@ public class NetworkMonitor {
         });
     }
 
-    private String formatSpeed(double kbps) {
+    public String formatSpeed(double kbps) {
         if (kbps < 1000) {
             return df.format(kbps) + " KB/s";
         } else {
@@ -551,7 +541,7 @@ public class NetworkMonitor {
         }
     }
 
-    private String formatBytes(long bytes) {
+    public String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
         } else if (bytes < 1024 * 1024) {
