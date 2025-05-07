@@ -29,6 +29,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors network interfaces and connections.
+ */
 public class NetworkMonitor extends BaseMonitor {
     private final List<NetworkIF> networkInterfaces;
     private final ComboBox<String> interfaceSelector;
@@ -56,6 +59,9 @@ public class NetworkMonitor extends BaseMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+    /**
+     * Constructor that initializes network monitoring.
+     */
     public NetworkMonitor() {
         super();
         networkInterfaces = hardware.getNetworkIFs();
@@ -70,6 +76,10 @@ public class NetworkMonitor extends BaseMonitor {
         startMonitoring();
     }
 
+    /**
+     * Creates the network monitoring panel with interface selector, stats and connection table.
+     * @return VBox containing the network monitor UI.
+     */
     public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
@@ -123,6 +133,9 @@ public class NetworkMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Updates the list of available network interfaces.
+     */
     private void updateNetworkInterfaces() {
         if (remoteStation != null) {
             // For remote monitoring, we'll just show a single "Remote" interface
@@ -162,7 +175,11 @@ public class NetworkMonitor extends BaseMonitor {
             });
         }
     }
-
+    
+    /**
+     * Creates a stats box displaying network addresses and transfer statistics.
+     * @return VBox containing network statistics.
+     */
     private VBox createStatsBox() {
         VBox statsBox = new VBox(15);
         statsBox.setPadding(new Insets(10));
@@ -237,6 +254,10 @@ public class NetworkMonitor extends BaseMonitor {
         return statsBox;
     }
 
+    /**
+     * Creates a line chart showing network usage over time.
+     * @return LineChart configured for network usage display.
+     */
     private LineChart<Number, Number> createNetworkChart() {
         final NumberAxis xAxis = new NumberAxis();
         final NumberAxis yAxis = new NumberAxis();
@@ -273,6 +294,10 @@ public class NetworkMonitor extends BaseMonitor {
         return lineChart;
     }
 
+    /**
+     * Creates a table showing network connections.
+     * @return TableView configured for connection display.
+     */
     private TableView<ConnectionEntry> createConnectionTable() {
         TableView<ConnectionEntry> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -302,6 +327,9 @@ public class NetworkMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Starts monitoring network interfaces and connections.
+     */
     public void startMonitoring() {
         // Update data every second
         scheduler.scheduleAtFixedRate(() -> {
@@ -310,6 +338,10 @@ public class NetworkMonitor extends BaseMonitor {
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Updates the selected network interface information.
+     * @param index The index of the selected interface.
+     */
     private void updateSelectedInterface(int index) {
         if (remoteStation != null) {
             // For remote monitoring, we don't have multiple interfaces
@@ -349,6 +381,9 @@ public class NetworkMonitor extends BaseMonitor {
         updateTotalBytes(currentNetworkIF);
     }
 
+     /**
+     * Updates network usage and performance information.
+     */
     private void updateNetworkInfo() {
         if (remoteStation != null) {
             try {
@@ -479,6 +514,10 @@ public class NetworkMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates total bytes transferred for the selected interface.
+     * @param netIF The network interface to update.
+     */
     private void updateTotalBytes(NetworkIF netIF) {
         if (remoteStation != null) {
             return;
@@ -487,6 +526,9 @@ public class NetworkMonitor extends BaseMonitor {
         totalUploaded.set(formatBytes(netIF.getBytesSent()));
     }
 
+    /**
+     * Updates active network connection information.
+     */
     private void updateConnectionInfo() {
         Platform.runLater(() -> {
             connectionData.clear();
@@ -553,6 +595,10 @@ public class NetworkMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Sets the remote station for monitoring.
+     * @param remoteStation The RemoteStation to monitor.
+     */
     public void setRemoteStation(RemoteStation remoteStation) {
         this.remoteStation = remoteStation;
         updateNetworkInterfaces();
