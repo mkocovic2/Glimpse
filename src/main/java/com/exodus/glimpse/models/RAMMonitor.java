@@ -26,6 +26,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors RAM/memory usage and processes consuming memory.
+ */
 public class RAMMonitor extends BaseMonitor {
     private final GlobalMemory memory;
 
@@ -44,6 +47,10 @@ public class RAMMonitor extends BaseMonitor {
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
+    /**
+     * Constructor that initializes RAM monitoring components.
+     * Sets up properties for memory usage tracking and initial data collection.
+     */
     public RAMMonitor() {
         super();
         memory = hardware.getMemory();
@@ -53,6 +60,10 @@ public class RAMMonitor extends BaseMonitor {
         startMonitoring();
     }
 
+    /**
+     * Creates the RAM monitoring panel with usage chart, statistics and memory-hungry processes table.
+     * @return VBox containing the complete RAM monitoring UI components
+     */
     public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(15);
         monitorPanel.setPadding(new Insets(10));
