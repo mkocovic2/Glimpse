@@ -101,6 +101,10 @@ public class GPUMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Creates a circular indicator for GPU usage percentage.
+     * @return StackPane containing the usage indicator.
+     */
     private StackPane createCircularIndicator() {
         StackPane circleContainer = new StackPane();
         circleContainer.setMinSize(100, 100);
@@ -133,6 +137,10 @@ public class GPUMonitor extends BaseMonitor {
         return circleContainer;
     }
 
+    /**
+     * Creates a stats box displaying GPU name, memory, driver and temperature.
+     * @return VBox containing GPU statistics.
+     */
     private VBox createStatsBox() {
         VBox statsBox = new VBox(8);
         statsBox.setPadding(new Insets(5));
@@ -164,6 +172,10 @@ public class GPUMonitor extends BaseMonitor {
         return row;
     }
 
+    /**
+     * Creates a line chart showing GPU usage over time.
+     * @return LineChart configured for GPU usage display.
+     */
     private LineChart<Number, Number> createGPUChart() {
         NumberAxis xAxis = new NumberAxis();
         xAxis.setLabel("Time (s)");
@@ -192,6 +204,10 @@ public class GPUMonitor extends BaseMonitor {
         return chart;
     }
 
+    /**
+     * Creates a table showing GPU-intensive processes.
+     * @return TableView configured for process display.
+     */
     private TableView<ProcessInfo> createProcessTable() {
         TableView<ProcessInfo> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -221,6 +237,9 @@ public class GPUMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Starts monitoring GPU usage and processes.
+     */
     protected void startMonitoring() {
         scheduler.scheduleAtFixedRate(() -> {
             updateGPUInfo();
@@ -228,6 +247,9 @@ public class GPUMonitor extends BaseMonitor {
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Updates GPU information including usage and temperature.
+     */
     private void updateGPUInfo() {
         if (!graphicsCards.isEmpty()) {
             // Find the NVIDIA GPU
@@ -266,6 +288,9 @@ public class GPUMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates process information using GPU resources.
+     */
     private void updateProcessInfo() {
         List<OSProcess> processes = os.getProcesses();
         processes.sort((p1, p2) -> Long.compare(p2.getResidentSetSize(), p1.getResidentSetSize()));
