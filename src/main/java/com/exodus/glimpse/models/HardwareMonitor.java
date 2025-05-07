@@ -14,6 +14,9 @@ import oshi.hardware.*;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Monitors and displays hardware information.
+ */
 public class HardwareMonitor extends BaseMonitor {
     private final SimpleStringProperty cpuModel = new SimpleStringProperty("N/A");
     private final SimpleStringProperty cpuCores = new SimpleStringProperty("N/A");
@@ -24,16 +27,26 @@ public class HardwareMonitor extends BaseMonitor {
     private final SimpleStringProperty gpuMemory = new SimpleStringProperty("N/A");
     private final ObservableList<DiskInfo> diskInfo = FXCollections.observableArrayList();
 
+    /**
+     * Constructor that initializes hardware monitoring.
+     */
     public HardwareMonitor() {
         super();
         startMonitoring();
     }
 
+    /**
+     * Starts monitoring hardware information.
+     */
     @Override
     protected void startMonitoring() {
         scheduler.scheduleAtFixedRate(this::updateHardwareInfo, 0, 2, TimeUnit.SECONDS);
     }
-
+    
+    /**
+     * Creates the hardware overview panel with CPU, RAM, GPU and disk info.
+     * @return VBox containing the hardware monitor UI.
+     */
     @Override
     public VBox createMonitorPanel() {
         return createHardwareMonitorPanel();
@@ -71,6 +84,12 @@ public class HardwareMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Creates a hardware information panel with title and colored border.
+     * @param title The panel title.
+     * @param color The border color.
+     * @return VBox containing the info box.
+     */
     private VBox createInfoBox(String title, Color color) {
         VBox box = new VBox(10);
         box.setPadding(new Insets(15));
@@ -83,10 +102,15 @@ public class HardwareMonitor extends BaseMonitor {
         return box;
     }
 
+    
     private HBox createInfoRow(String label, SimpleStringProperty value) {
         return createStatRow(label, value);
     }
 
+    /**
+     * Creates a table showing disk information.
+     * @return TableView configured for disk display.
+     */
     private TableView<DiskInfo> createDiskTable() {
         TableView<DiskInfo> table = new TableView<>(diskInfo);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -108,6 +132,9 @@ public class HardwareMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Updates all hardware information from local or remote source.
+     */
     private void updateHardwareInfo() {
         if (remoteStation != null) {
             // Remote monitoring mode
