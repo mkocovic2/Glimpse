@@ -24,6 +24,9 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+/**
+ * Monitors and manages system processes.
+ */
 public class ProcessMonitor extends BaseMonitor {
     private final DecimalFormat df = new DecimalFormat("#.##");
     private final ObservableList<ProcessInfo> processData = FXCollections.observableArrayList();
@@ -32,11 +35,18 @@ public class ProcessMonitor extends BaseMonitor {
     private SortOrder currentSortOrder = SortOrder.CPU_DESC;
     private boolean showAllProcesses = false;
 
+    /**
+     * Constructor that initializes process monitoring.
+     */
     public ProcessMonitor() {
         super();
         startMonitoring();
     }
 
+    /**
+     * Creates the process monitoring panel with toolbar, process table and status bar.
+     * @return VBox containing the process monitor UI.
+     */
     public VBox createMonitorPanel() {
         VBox monitorPanel = new VBox(10);
         monitorPanel.setPadding(new Insets(10));
@@ -56,6 +66,10 @@ public class ProcessMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Creates the toolbar with sorting options and process actions.
+     * @return ToolBar containing control buttons.
+     */
     private ToolBar createToolbar() {
         ToolBar toolbar = new ToolBar();
         toolbar.setStyle("-fx-background-color: #323232;");
@@ -111,6 +125,10 @@ public class ProcessMonitor extends BaseMonitor {
         return toolbar;
     }
 
+    /**
+     * Creates a table showing system processes with sorting capabilities.
+     * @return TableView configured for process display.
+     */
     private TableView<ProcessInfo> createProcessTable() {
         TableView<ProcessInfo> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -201,6 +219,10 @@ public class ProcessMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Creates a status bar showing process count and memory usage.
+     * @return HBox containing status information.
+     */
     private HBox createStatusBar() {
         HBox statusBar = new HBox(10);
         statusBar.setPadding(new Insets(5, 10, 5, 10));
@@ -222,10 +244,16 @@ public class ProcessMonitor extends BaseMonitor {
         return statusBar;
     }
 
+    /**
+     * Starts monitoring system processes.
+     */
     protected void startMonitoring() {
         scheduler.scheduleAtFixedRate(this::updateProcessInfo, 0, 2, TimeUnit.SECONDS);
     }
 
+    /**
+     * Updates process information from local or remote source.
+     */
     private void updateProcessInfo() {
         if (remoteStation != null) {
             updateRemoteProcessInfo();
@@ -234,6 +262,9 @@ public class ProcessMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates process information from local system.
+     */
     private void updateLocalProcessInfo() {
         List<OSProcess> processes = os.getProcesses();
 
@@ -266,6 +297,9 @@ public class ProcessMonitor extends BaseMonitor {
         });
     }
 
+    /**
+     * Updates process information from remote station.
+     */
     private void updateRemoteProcessInfo() {
         try {
             String response = remoteStation.getTopProcesses();
@@ -320,11 +354,19 @@ public class ProcessMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Attempts to kill the selected process.
+     */
     private void killSelectedProcess() {
         // Implementation for killing processes would go here
         // This would need to be different for local vs remote
+        // We didn't really have time to implement this yet
     }
 
+    /**
+     * Shows detailed information about a process.
+     * @param process The process to display.
+     */
     private void showProcessDetails(ProcessInfo process) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Process Details");
@@ -361,6 +403,10 @@ public class ProcessMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Sets the remote station for monitoring.
+     * @param remoteStation The RemoteStation to monitor.
+     */
     public void setRemoteStation(RemoteStation remoteStation) {
         this.remoteStation = remoteStation;
     }
