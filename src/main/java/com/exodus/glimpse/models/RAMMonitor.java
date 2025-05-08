@@ -103,6 +103,10 @@ public class RAMMonitor extends BaseMonitor {
         return monitorPanel;
     }
 
+    /**
+     * Creates a circular indicator to visually display RAM usage percentage.
+     * @return StackPane containing the styled circular indicator with percentage text
+     */
     private StackPane createCircularIndicator() {
         StackPane circleContainer = new StackPane();
         circleContainer.setMinSize(100, 100);
@@ -134,6 +138,10 @@ public class RAMMonitor extends BaseMonitor {
         return circleContainer;
     }
 
+    /**
+     * Creates a container for displaying RAM statistics (total, used, free, swap).
+     * @return VBox containing formatted rows of RAM statistics
+     */
     private VBox createStatsBox() {
         VBox statsBox = new VBox(8);
         statsBox.setPadding(new Insets(5));
@@ -149,6 +157,12 @@ public class RAMMonitor extends BaseMonitor {
         return statsBox;
     }
 
+    /**
+     * Creates a formatted row for displaying a specific RAM statistic.
+     * @param labelText The description label for the statistic
+     * @param valueProperty The property containing the statistic value
+     * @return HBox containing the formatted label and value
+     */
     public HBox createStatRow(String labelText, SimpleStringProperty valueProperty) {
         HBox row = new HBox(10);
         row.setAlignment(Pos.CENTER_LEFT);
@@ -165,6 +179,10 @@ public class RAMMonitor extends BaseMonitor {
         return row;
     }
 
+    /**
+     * Creates a line chart for displaying RAM usage over time.
+     * @return LineChart configured for displaying RAM usage percentage
+     */
     private LineChart<Number, Number> createRAMChart() {
         final NumberAxis xAxis = new NumberAxis();
         final NumberAxis yAxis = new NumberAxis(0, 100, 20);
@@ -195,6 +213,10 @@ public class RAMMonitor extends BaseMonitor {
         return lineChart;
     }
 
+    /**
+     * Creates a table view for displaying information about processes consuming memory.
+     * @return TableView configured with columns for process name, PID, memory usage and percentage
+     */
     private TableView<ProcessInfo> createProcessTable() {
         TableView<ProcessInfo> table = new TableView<>();
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
@@ -224,6 +246,10 @@ public class RAMMonitor extends BaseMonitor {
         return table;
     }
 
+    /**
+     * Starts the monitoring scheduler that updates RAM information and process data
+     * at regular intervals (every 1 second).
+     */
     public void startMonitoring() {
         scheduler.scheduleAtFixedRate(() -> {
             updateRAMInfo();
@@ -231,6 +257,10 @@ public class RAMMonitor extends BaseMonitor {
         }, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Updates RAM usage information from either local or remote system.
+     * Updates UI components with the current RAM statistics.
+     */
     private void updateRAMInfo() {
         if (remoteStation != null) {
             try {
@@ -288,6 +318,10 @@ public class RAMMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Updates the list of top memory-consuming processes from either local or remote system.
+     * Refreshes the process table with current data.
+     */
     private void updateProcessInfo() {
         if (remoteStation != null) {
             // Remote process monitoring
@@ -363,6 +397,11 @@ public class RAMMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Formats byte values into human-readable strings with appropriate units (B, KB, MB, GB).
+     * @param bytes The number of bytes to format
+     * @return String representation of bytes with appropriate unit suffix
+     */
     public String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
@@ -375,14 +414,26 @@ public class RAMMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Sets the remote station for collecting RAM and process data from a remote system.
+     * @param remoteStation The remote station instance to retrieve data from
+     */
     public void setRemoteStation(RemoteStation remoteStation) {
         this.remoteStation = remoteStation;
     }
 
+    /**
+     * Shuts down the monitoring scheduler when the monitor is no longer needed.
+     * Ensures proper resource cleanup.
+     */
     public void shutdown() {
         scheduler.shutdown();
     }
 
+    /**
+     * Inner class that represents process information for display in the process table.
+     * Contains observable properties for process name, PID, memory usage and percentage.
+     */
     public static class ProcessInfo {
         private final SimpleStringProperty name;
         private final SimpleStringProperty pid;
