@@ -212,6 +212,14 @@ public class HardwareMonitor extends BaseMonitor {
         private final SimpleStringProperty model;
         private final SimpleStringProperty size;
 
+        /**
+         * Constructs a DiskInfo object with the specified name, model, and size.
+         * Initializes each field as a SimpleStringProperty for use in JavaFX bindings.
+         *
+         * @param name the name of the disk
+         * @param model the model identifier of the disk
+         * @param size  the storage capacity of the disk
+         */
         public DiskInfo(String name, String model, String size) {
             this.name = new SimpleStringProperty(name);
             this.model = new SimpleStringProperty(model);
