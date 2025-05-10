@@ -203,6 +203,10 @@ public class HardwareMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Inner class that represents process information for display in the disk table.
+     * Contains observable properties for name, model, size
+     */
     public static class DiskInfo {
         private final SimpleStringProperty name;
         private final SimpleStringProperty model;
