@@ -575,6 +575,11 @@ public class NetworkMonitor extends BaseMonitor {
         });
     }
 
+    /**
+     * Formats network speed values with appropriate units.
+     * @param kbps The speed in kilobytes per second.
+     * @return Formatted string with appropriate unit (KB/s or MB/s).
+     */
     public String formatSpeed(double kbps) {
         if (kbps < 1000) {
             return df.format(kbps) + " KB/s";
@@ -583,6 +588,11 @@ public class NetworkMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Formats byte values with appropriate size units.
+     * @param bytes The number of bytes to format.
+     * @return Formatted string with appropriate unit (B, KB, MB, or GB).
+     */
     public String formatBytes(long bytes) {
         if (bytes < 1024) {
             return bytes + " B";
@@ -604,10 +614,19 @@ public class NetworkMonitor extends BaseMonitor {
         updateNetworkInterfaces();
     }
 
+    /**
+     * Cleans up resources by shutting down the scheduler.
+     */
     public void shutdown() {
         scheduler.shutdown();
     }
 
+    /**
+     * Creates a new network statistics snapshot.
+     * @param bytesReceived Total bytes received.
+     * @param bytesSent Total bytes sent.
+     * @param timestamp Time of the snapshot in milliseconds.
+     */
     private static class NetworkStats {
         final long bytesReceived;
         final long bytesSent;
@@ -620,12 +639,23 @@ public class NetworkMonitor extends BaseMonitor {
         }
     }
 
+
+    /**
+     * Class representing a network connection entry for display in the connections table.
+     */
     public static class ConnectionEntry {
         private final SimpleStringProperty localAddress;
         private final SimpleStringProperty remoteAddress;
         private final SimpleStringProperty protocol;
         private final SimpleStringProperty state;
 
+        /**
+         * Creates a new connection entry.
+         * @param localAddress Local address and port.
+         * @param remoteAddress Remote address and port.
+         * @param protocol Connection protocol (TCP/UDP).
+         * @param state Connection state.
+         */
         public ConnectionEntry(String localAddress, String remoteAddress, String protocol, String state) {
             this.localAddress = new SimpleStringProperty(localAddress);
             this.remoteAddress = new SimpleStringProperty(remoteAddress);
