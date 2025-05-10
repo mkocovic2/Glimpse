@@ -342,6 +342,14 @@ public class GPUMonitor extends BaseMonitor {
         private final SimpleStringProperty gpuUsage;
         private final SimpleStringProperty memoryUsage;
 
+        /**
+         * Creates a new ProcessInfo object with GPU monitoring information.
+         * 
+         * @param name The name of the process.
+         * @param pid The process ID.
+         * @param gpuUsage The GPU usage of the process as a formatted string.
+         * @param memoryUsage The memory usage of the process as a formatted string.
+         */
         public ProcessInfo(String name, String pid, String gpuUsage, String memoryUsage) {
             this.name = new SimpleStringProperty(name);
             this.pid = new SimpleStringProperty(pid);
