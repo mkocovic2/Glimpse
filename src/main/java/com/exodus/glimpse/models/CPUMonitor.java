@@ -301,6 +301,14 @@ public class CPUMonitor extends BaseMonitor {
         private final SimpleStringProperty cpuUsage;
         private final SimpleStringProperty memoryUsage;
 
+        /**
+         * Creates a new ProcessInfo object to store process information.
+         * 
+         * @param name The name of the process.
+         * @param pid The process ID.
+         * @param cpuUsage The CPU usage of the process as a formatted string.
+         * @param memoryUsage The memory usage of the process as a formatted string.
+         */
         public ProcessInfo(String name, String pid, String cpuUsage, String memoryUsage) {
             this.name = new SimpleStringProperty(name);
             this.pid = new SimpleStringProperty(pid);
