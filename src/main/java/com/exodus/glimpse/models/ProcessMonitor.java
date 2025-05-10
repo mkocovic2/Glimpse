@@ -459,6 +459,10 @@ public class ProcessMonitor extends BaseMonitor {
         }
     }
 
+    /**
+     * Inner class that represents process information for display in the process table.
+     * Contains observable properties for process name, PID, memory usage and percentage.
+     */
     public static class ProcessInfo {
         private final String name;
         private final int pid;
