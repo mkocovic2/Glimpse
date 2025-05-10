@@ -692,6 +692,16 @@ public class DiskMonitor extends BaseMonitor {
         private final SimpleStringProperty used;
         private final SimpleStringProperty usagePercent;
 
+        /**
+         * Creates a new DiskPartition object representing a disk partition or volume.
+         * 
+         * @param name The name or identifier of the partition.
+         * @param mountPoint The directory path where the partition is mounted.
+         * @param type The file system type (e.g., NTFS, ext4, HFS+).
+         * @param size The total size of the partition as a formatted string.
+         * @param used The used space on the partition as a formatted string.
+         * @param usagePercent The percentage of disk space used as a formatted string.
+         */
         public DiskPartition(String name, String mountPoint, String type, String size, String used, String usagePercent) {
             this.name = new SimpleStringProperty(name);
             this.mountPoint = new SimpleStringProperty(mountPoint);
