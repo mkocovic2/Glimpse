@@ -471,6 +471,16 @@ public class ProcessMonitor extends BaseMonitor {
         private final int threadCount;
         private final String user;
 
+        /**
+         * Creates a new ProcessInfo object with detailed process metrics.
+         * 
+         * @param name The name of the process.
+         * @param pid The process ID as an integer.
+         * @param cpuUsage The CPU usage percentage as a double.
+         * @param memoryBytes The memory usage in bytes.
+         * @param threadCount The number of threads used by the process.
+         * @param user The username of the process owner.
+         */
         public ProcessInfo(String name, int pid, double cpuUsage, long memoryBytes, int threadCount, String user) {
             this.name = name;
             this.pid = pid;
